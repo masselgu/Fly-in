@@ -1,0 +1,6 @@
+nb_drones: 2
+start_hub: hub 0 0
+end_hub: goal 9 0
+hub: middle 4 0 [zone=normal]
+connection: hub-middle
+connection: middle-goal
