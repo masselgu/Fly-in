@@ -1,86 +1,149 @@
+import re
 from errors import ParserError
 from zone import Zone
 from graph import Graph
 
 
 class Parser:
+    DRONE_PATTERN = re.compile(r"^nb_drones:\s*([+-]?\d+)$")
+    HUB_PATTERN = re.compile(
+        r"^(?P<type>start_hub|end_hub|hub):\s+"
+        r"(?P<name>\S+)\s+"
+        r"(?P<x>[+-]?\d+)\s+"
+        r"(?P<y>[+-]?\d+)"
+        r"(?:\s+\[(?P<meta>[^\]]*)\])?$"
+    )
+    CONN_PATTERN = re.compile(
+        r"^connection:\s+"
+        r"(?P<name1>\S+)-(?P<name2>\S+)"
+        r"(?:\s+\[(?P<meta>[^\]]*)\])?$"
+    )
+
     def __init__(self) -> None:
         self.nb_drones: int = 0
         self.start_zone: Zone | None = None
         self.end_zone: Zone | None = None
         self.graph: Graph = Graph()
 
-    def parse_metadata(self, metadata: str, line_number: int) -> dict:
+    def _clean_line(self, line: str) -> str:
+        """Remove inline comments and strip whitespace."""
+        if "#" in line:
+            line = line[:line.index("#")]
+        return line.strip()
+
+    def _parse_hub_metadata(self, meta: str,
+                            line_number: int) -> dict:
+        """Parse metadata string from hub definition."""
         result: dict = {
             "zone_type": "normal",
             "color": None,
             "max_drones": 1
         }
-        if not metadata.strip():
+        if not meta or not meta.strip():
             return result
-        for item in metadata.strip().split():
-            if "=" not in item:
+
+        valid_keys = ["zone", "color", "max_drones"]
+        valid_zone_types = ["normal", "blocked", "restricted", "priority"]
+        pair_pattern = re.compile(r"^(\w+)=(\S+)$")
+
+        for item in meta.strip().split():
+            match = pair_pattern.match(item)
+            if not match:
                 raise ParserError(
                     f"Line {line_number}: invalid metadata '{item}'"
                 )
-            key, value = item.split("=", 1)
-            if not key or not value or value.startswith("="):
+            key, value = match.group(1), match.group(2)
+
+            if key not in valid_keys:
                 raise ParserError(
-                    f"Line {line_number}: invalid metadata '{item}'"
+                    f"Line {line_number}: unknown metadata key '{key}' "
+                    f"expected one of {valid_keys}"
                 )
             if key == "zone":
+                if value not in valid_zone_types:
+                    raise ParserError(
+                        f"Line {line_number}: invalid zone type '{value}' "
+                        f"expected one of {valid_zone_types}"
+                    )
                 result["zone_type"] = value
             elif key == "color":
+                if not value.isalpha():
+                    raise ParserError(
+                        f"Line {line_number}: color must be "
+                        f"a single word got '{value}'"
+                    )
                 result["color"] = value
             elif key == "max_drones":
                 try:
                     result["max_drones"] = int(value)
                 except ValueError:
                     raise ParserError(
-                        f"Line {line_number}: max_drones must be integer!"
+                        f"Line {line_number}: "
+                        "max_drones must be integer!"
                     )
-            else:
-                raise ParserError(
-                    f"Line {line_number}: unknown metadata key '{key}'"
-                )
+                if result["max_drones"] < 1:
+                    raise ParserError(
+                        f"Line {line_number}: "
+                        "max_drones must be positive!"
+                    )
         return result
 
-    def parse_hubs(self, line: str, line_number: int) -> Zone:
-        line = line.strip()
-        if not line:
-            raise ParserError(
-                f"Line {line_number}: hub value missing!"
-            )
-        if "[" in line:
-            main_part, metadata_part = line.split("[", 1)
-            if "]" not in metadata_part:
-                raise ParserError(
-                    f"Line {line_number}: missing closing ']'"
-                )
-            metadata_part = metadata_part.rstrip("]")
-        else:
-            main_part = line
-            metadata_part = ""
+    def _parse_conn_metadata(self, meta: str,
+                             line_number: int) -> int:
+        """Parse metadata string from connection definition."""
+        if not meta or not meta.strip():
+            return 1
 
-        parts = main_part.strip().split()
-        if len(parts) < 3:
-            raise ParserError(
-                f"Line {line_number}: hub must have name x y!"
-            )
-        if len(parts) > 3:
-            raise ParserError(
-                f"Line {line_number}: too many values before metadata!"
-            )
-        name = parts[0]
+        max_link_capacity = 1
+        pair_pattern = re.compile(r"^(\w+)=(\S+)$")
+
+        for item in meta.strip().split():
+            match = pair_pattern.match(item)
+            if not match:
+                raise ParserError(
+                    f"Line {line_number}: "
+                    f"invalid connection metadata '{item}'"
+                )
+            key, value = match.group(1), match.group(2)
+
+            if key != "max_link_capacity":
+                raise ParserError(
+                    f"Line {line_number}: "
+                    f"unknown connection metadata '{key}' "
+                    "expected 'max_link_capacity'"
+                )
+            try:
+                max_link_capacity = int(value)
+            except ValueError:
+                raise ParserError(
+                    f"Line {line_number}: "
+                    "max_link_capacity must be integer!"
+                )
+            if max_link_capacity < 1:
+                raise ParserError(
+                    f"Line {line_number}: "
+                    "max_link_capacity must be positive!"
+                )
+        return max_link_capacity
+
+    def _handle_hub(self, match: re.Match,
+                    line_number: int) -> None:
+        """Handle start_hub, end_hub and hub lines."""
+        hub_type = match.group("type")
+        name = match.group("name")
+        meta = match.group("meta")
+
         try:
-            x = int(parts[1])
-            y = int(parts[2])
+            x = int(match.group("x"))
+            y = int(match.group("y"))
         except ValueError:
             raise ParserError(
                 f"Line {line_number}: coordinates must be integers!"
             )
-        metadata = self.parse_metadata(metadata_part, line_number)
-        return Zone(
+
+        metadata = self._parse_hub_metadata(meta or "", line_number)
+
+        zone = Zone(
             name=name,
             x=x,
             y=y,
@@ -89,153 +152,98 @@ class Parser:
             max_drones=metadata["max_drones"]
         )
 
-    def parse_connection(self, line: str, line_number: int) -> None:
-        line = line.strip()
-        if not line:
-            raise ParserError(
-                f"Line {line_number}: connection value missing!"
-            )
-        if "[" in line:
-            main_part, metadata_part = line.split("[", 1)
-            if "]" not in metadata_part:
+        if hub_type == "start_hub":
+            if self.start_zone is not None:
                 raise ParserError(
-                    f"Line {line_number}: missing closing ']'"
+                    f"Line {line_number}: start_hub already defined!"
                 )
-            metadata_part = metadata_part.rstrip("]")
-        else:
-            main_part = line
-            metadata_part = ""
+            self.start_zone = zone
 
-        main_part = main_part.strip()
-        if "-" not in main_part:
-            raise ParserError(
-                f"Line {line_number}: connection must use '-' between zones!"
-            )
-        zone_names = main_part.split("-")
-        if len(zone_names) != 2:
-            raise ParserError(
-                f"Line {line_number}: connection must have exactly 2 zones!"
-            )
-        name1 = zone_names[0].strip()
-        name2 = zone_names[1].strip()
+        elif hub_type == "end_hub":
+            if self.end_zone is not None:
+                raise ParserError(
+                    f"Line {line_number}: end_hub already defined!"
+                )
+            self.end_zone = zone
 
-        if not name1 or not name2:
-            raise ParserError(
-                f"Line {line_number}: connection zone names missing!"
-            )
+        self.graph.add_zone(zone)
+
+    def _handle_connection(self, match: re.Match,
+                           line_number: int) -> None:
+        """Handle connection lines."""
+        name1 = match.group("name1")
+        name2 = match.group("name2")
+        meta = match.group("meta")
+
         if name1 == name2:
             raise ParserError(
-                f"Line {line_number}: connection cannot link zone to itself!"
+                f"Line {line_number}: "
+                "connection cannot link zone to itself!"
             )
 
-        max_link_capacity = 1
-        if metadata_part.strip():
-            for item in metadata_part.strip().split():
-                if "=" not in item:
-                    raise ParserError(
-                        f"Line {line_number}: invalid metadata '{item}'"
-                    )
-                key, value = item.split("=", 1)
-                if not key or not value or value.startswith("="):
-                    raise ParserError(
-                        f"Line {line_number}: invalid metadata '{item}'"
-                    )
-                if key == "max_link_capacity":
-                    try:
-                        max_link_capacity = int(value)
-                    except ValueError:
-                        raise ParserError(
-                            f"Line {line_number}: "
-                            "max_link_capacity must be integer!"
-                        )
-                    if max_link_capacity < 1:
-                        raise ParserError(
-                            f"Line {line_number}: "
-                            "max_link_capacity must be positive!"
-                        )
-                else:
-                    raise ParserError(
-                        f"Line {line_number}: "
-                        f"unknown connection metadata '{key}'"
-                    )
+        max_link_capacity = self._parse_conn_metadata(
+            meta or "", line_number
+        )
         self.graph.add_connection(name1, name2, max_link_capacity)
 
     def parse(self, filename: str) -> None:
+        """Parse map file and build graph."""
         try:
             with open(filename, "r") as f:
-                for line_number, line in enumerate(f, 1):
-                    line = line.strip()
-
-                    if "#" in line:
-                        line = line.split("#")[0].strip()
-
-                    if not line:
-                        continue
-
-                    parts = line.split(":", 1)
-                    if parts[0] not in ["nb_drones", "start_hub",
-                                        "end_hub", "hub", "connection"]:
-                        raise ParserError(
-                            f"Line {line_number}: invalid input '{line}'"
-                        )
-                    if parts[0] != "nb_drones" and self.nb_drones == 0:
-                        raise ParserError(
-                            f"Line {line_number}: nb_drones must be first!"
-                        )
-                    if parts[0] == "nb_drones":
-                        if self.nb_drones != 0:
-                            raise ParserError(
-                                f"Line {line_number}: "
-                                "nb_drones already defined!"
-                            )
-                        if not parts[1].strip():
-                            raise ParserError(
-                                f"Line {line_number}: "
-                                "nb_drones value missing!"
-                            )
-                        try:
-                            self.nb_drones = int(parts[1].strip())
-                        except ValueError:
-                            raise ParserError(
-                                f"Line {line_number}: "
-                                "nb_drones must be integer!"
-                            )
-                        if self.nb_drones < 1:
-                            raise ParserError(
-                                f"Line {line_number}: "
-                                "nb_drones must be positive!"
-                            )
-                    elif parts[0] == "start_hub":
-                        if self.start_zone is not None:
-                            raise ParserError(
-                                f"Line {line_number}: "
-                                "start_hub already defined!"
-                            )
-                        self.start_zone = self.parse_hubs(
-                            parts[1], line_number
-                        )
-                        self.graph.add_zone(self.start_zone)
-                    elif parts[0] == "end_hub":
-                        if self.end_zone is not None:
-                            raise ParserError(
-                                f"Line {line_number}: "
-                                "end_hub already defined!"
-                            )
-                        self.end_zone = self.parse_hubs(
-                            parts[1], line_number
-                        )
-                        self.graph.add_zone(self.end_zone)
-                    elif parts[0] == "hub":
-                        self.graph.add_zone(
-                            self.parse_hubs(parts[1], line_number)
-                        )
-                    elif parts[0] == "connection":
-                        self.parse_connection(parts[1], line_number)
-
-            if self.start_zone is None:
-                raise ParserError("No start_hub defined!")
-            if self.end_zone is None:
-                raise ParserError("No end_hub defined!")
-
+                lines = f.readlines()
         except FileNotFoundError:
             raise ParserError(f"File '{filename}' not found!")
+
+        if not lines:
+            raise ParserError("Empty map file!")
+
+        for line_number, line in enumerate(lines, 1):
+            line = self._clean_line(line)
+
+            if not line:
+                continue
+
+            # nb_drones must be first
+            if self.nb_drones == 0:
+                match = self.DRONE_PATTERN.match(line)
+                if not match:
+                    raise ParserError(
+                        f"Line {line_number}: "
+                        "first valid line must define 'nb_drones: <int>'"
+                    )
+                value = int(match.group(1))
+                if value < 1:
+                    raise ParserError(
+                        f"Line {line_number}: "
+                        "nb_drones must be at least 1!"
+                    )
+                self.nb_drones = value
+                continue
+
+            # nb_drones again?
+            if self.DRONE_PATTERN.match(line):
+                raise ParserError(
+                    f"Line {line_number}: nb_drones already defined!"
+                )
+
+            # hub lines
+            hub_match = self.HUB_PATTERN.match(line)
+            if hub_match:
+                self._handle_hub(hub_match, line_number)
+                continue
+
+            # connection lines
+            conn_match = self.CONN_PATTERN.match(line)
+            if conn_match:
+                self._handle_connection(conn_match, line_number)
+                continue
+
+            raise ParserError(
+                f"Line {line_number}: invalid syntax '{line}'"
+            )
+
+        # final validations
+        if self.start_zone is None:
+            raise ParserError("No start_hub defined!")
+        if self.end_zone is None:
+            raise ParserError("No end_hub defined!")
