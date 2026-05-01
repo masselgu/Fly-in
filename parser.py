@@ -5,15 +5,15 @@ from graph import Graph
 
 
 class Parser:
-    DRONE_PATTERN = re.compile(r"^nb_drones:\s*([+-]?\d+)$")
-    HUB_PATTERN = re.compile(
+    DRONES_REGEX = re.compile(r"^nb_drones:\s*([+-]?\d+)$")
+    HUB_REGEX = re.compile(
         r"^(?P<type>start_hub|end_hub|hub):\s+"
         r"(?P<name>\S+)\s+"
         r"(?P<x>[+-]?\d+)\s+"
         r"(?P<y>[+-]?\d+)"
         r"(?:\s+\[(?P<meta>[^\]]*)\])?$"
     )
-    CONN_PATTERN = re.compile(
+    CON_REGEX = re.compile(
         r"^connection:\s+"
         r"(?P<name1>\S+)-(?P<name2>\S+)"
         r"(?:\s+\[(?P<meta>[^\]]*)\])?$"
@@ -88,8 +88,8 @@ class Parser:
                     )
         return result
 
-    def _parse_conn_metadata(self, meta: str,
-                             line_number: int) -> int:
+    def _parse_con_metadata(self, meta: str,
+                            line_number: int) -> int:
         """Parse metadata string from connection definition."""
         if not meta or not meta.strip():
             return 1
@@ -181,7 +181,7 @@ class Parser:
                 "connection cannot link zone to itself!"
             )
 
-        max_link_capacity = self._parse_conn_metadata(
+        max_link_capacity = self._parse_con_metadata(
             meta or "", line_number
         )
         self.graph.add_connection(name1, name2, max_link_capacity)
@@ -205,45 +205,48 @@ class Parser:
 
             # nb_drones must be first
             if self.nb_drones == 0:
-                match = self.DRONE_PATTERN.match(line)
+                match = self.DRONES_REGEX.match(line)
                 if not match:
                     raise ParserError(
                         f"Line {line_number}: "
-                        "first valid line must define 'nb_drones: <int>'"
+                        "expected 'nb_drones: <positive_integer>' as opening "
+                        "declaration"
                     )
                 value = int(match.group(1))
                 if value < 1:
                     raise ParserError(
                         f"Line {line_number}: "
-                        "nb_drones must be at least 1!"
+                        "nb_drones must be greater than zero"
                     )
                 self.nb_drones = value
                 continue
 
             # nb_drones again?
-            if self.DRONE_PATTERN.match(line):
+            if self.DRONES_REGEX.match(line):
                 raise ParserError(
                     f"Line {line_number}: nb_drones already defined!"
                 )
 
             # hub lines
-            hub_match = self.HUB_PATTERN.match(line)
+            hub_match = self.HUB_REGEX.match(line)
             if hub_match:
                 self._handle_hub(hub_match, line_number)
                 continue
 
             # connection lines
-            conn_match = self.CONN_PATTERN.match(line)
+            conn_match = self.CON_REGEX.match(line)
             if conn_match:
                 self._handle_connection(conn_match, line_number)
                 continue
 
             raise ParserError(
-                f"Line {line_number}: invalid syntax '{line}'"
+                f"Line {line_number}: '{line}' is not a valid map instruction"
             )
 
         # final validations
         if self.start_zone is None:
-            raise ParserError("No start_hub defined!")
+            raise ParserError("map is missing a departure point — 'start_hub' "
+                              "must be defined")
         if self.end_zone is None:
-            raise ParserError("No end_hub defined!")
+            raise ParserError("map is missing an arrival point — 'end_hub' "
+                              "must be defined")
