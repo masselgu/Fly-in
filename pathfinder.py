@@ -1,95 +1,128 @@
+import heapq
 from errors import ParserError
 from graph import Graph
 from zone import Zone
 
 
 class Pathfinder:
-    """Dijkstra pathfinding algorithm for drone routing."""
+    """Dijkstra-based pathfinding engine for drone routing."""
 
     def __init__(self, graph: Graph) -> None:
-        """Initialize pathfinder with a graph."""
+        """Initialize the routing engine with a navigation graph."""
         self.graph = graph
 
-    def _get_cost(self, zone: Zone) -> int:
-        """Return movement cost based on zone type."""
+    def _movement_cost(self, zone: Zone) -> float:
+        """Calculate traversal cost based on zone type."""
         if zone.zone_type == "restricted":
-            return 2
-        return 1
+            return 2.0
+        if zone.zone_type == "priority":
+            return 0.9
+        return 1.0
 
-    def _get_cheapest(self, costs: dict[str, float],
-                      visited: list[str]) -> str | None:
-        """Return unvisited zone with lowest cost."""
-        cheapest: str | None = None
-        lowest: float = float("inf")
-        for name, cost in costs.items():
-            if name not in visited and cost < lowest:
-                lowest = cost
-                cheapest = name
-        return cheapest
-
-    def find_path(self, start: str, end: str) -> list[Zone]:
-        """Find shortest path from start to end using Dijkstra."""
-        if start not in self.graph.zones:
-            raise ParserError(f"Zone '{start}' not found in graph!")
-        if end not in self.graph.zones:
-            raise ParserError(f"Zone '{end}' not found in graph!")
-
-        # initialize costs to infinity for all zones
+    def _initialize_costs(self, start: str) -> dict[str, float]:
+        """Set up initial cost table with infinity for all zones."""
         costs: dict[str, float] = {}
         for name in self.graph.zones:
             costs[name] = float("inf")
-        costs[start] = 0
+        costs[start] = 0.0
+        return costs
 
-        # track previous zone for path reconstruction
+    def _initialize_previous(self) -> dict[str, str | None]:
+        """Set up previous zone tracker for path reconstruction."""
         previous: dict[str, str | None] = {}
         for name in self.graph.zones:
             previous[name] = None
+        return previous
 
-        visited: list[str] = []
+    def _rebuild_route(self, previous: dict[str, str | None],
+                       end: str) -> list[Zone]:
+        """Reconstruct full route from end zone back to start."""
+        route: list[Zone] = []
+        current: str | None = end
 
-        while True:
-            # get cheapest unvisited zone
-            current = self._get_cheapest(costs, visited)
+        while current is not None:
+            route.append(self.graph.zones[current])
+            current = previous[current]
 
-            # no reachable zones left
-            if current is None:
-                break
+        route.reverse()
+        return route
 
-            # reached the end!
+    def compute_route(self, start: str, end: str) -> list[Zone]:
+        """
+        Compute optimal route from start to end zone.
+
+        Uses Dijkstra algorithm with priority queue for efficiency.
+        Accounts for zone types and movement costs.
+        Skips blocked zones automatically.
+
+        Args:
+            start: name of the departure zone
+            end: name of the destination zone
+
+        Returns:
+            list of Zone objects representing the optimal path
+        """
+        if start not in self.graph.zones:
+            raise ParserError(
+                f"departure zone '{start}' does not exist in the map"
+            )
+        if end not in self.graph.zones:
+            raise ParserError(
+                f"destination zone '{end}' does not exist in the map"
+            )
+        if start == end:
+            return [self.graph.zones[start]]
+
+        costs = self._initialize_costs(start)
+        previous = self._initialize_previous()
+        visited: set[str] = set()
+
+        # priority queue: (cost, zone_name)
+        pq: list[tuple[float, str]] = []
+        heapq.heappush(pq, (0.0, start))
+
+        while pq:
+            current_cost, current = heapq.heappop(pq)
+
+            # skip already processed zones
+            if current in visited:
+                continue
+
+            # destination reached!
             if current == end:
                 break
 
-            visited.append(current)
+            visited.add(current)
 
-            # check all neighbors
             for neighbor in self.graph.get_neighbors(current):
 
-                # skip blocked zones
+                # blocked zones are impassable
                 if neighbor.zone_type == "blocked":
                     continue
 
-                # calculate new cost
-                new_cost = costs[current] + self._get_cost(neighbor)
+                new_cost = current_cost + self._movement_cost(neighbor)
 
-                # update if cheaper path found
                 if new_cost < costs[neighbor.name]:
                     costs[neighbor.name] = new_cost
                     previous[neighbor.name] = current
+                    heapq.heappush(pq, (new_cost, neighbor.name))
 
-        # check if end was reached
+        # no route exists
         if costs[end] == float("inf"):
             raise ParserError(
-                f"No path found from '{start}' to '{end}'!"
+                f"navigation failed — no flyable route exists "
+                f"between '{start}' and '{end}'"
             )
 
-        # rebuild path from end to start
-        path: list[Zone] = []
-        current_name: str | None = end
+        return self._rebuild_route(previous, end)
 
-        while current_name is not None:
-            path.append(self.graph.zones[current_name])
-            current_name = previous[current_name]
+    def compute_all_routes(self, start: str,
+                           end: str,
+                           nb_drones: int) -> list[list[Zone]]:
+        routes: list[list[Zone]] = []
+        primary = self.compute_route(start, end)
 
-        # reverse to get start → end order
-        path.reverse()
-        return path
+        for _ in range(nb_drones):
+            routes.append(primary)
+
+        return routes
