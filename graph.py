@@ -5,7 +5,7 @@ from zone import Zone
 class Connection:
     def __init__(self, zone1: Zone, zone2: Zone,
                  max_link_capacity: int = 1) -> None:
-        if max_link_capacity < 1:
+        if not isinstance(max_link_capacity, int) or max_link_capacity < 1:
             raise GraphError(f"Invalid capacity: {max_link_capacity}")
         self.zone1 = zone1
         self.zone2 = zone2
@@ -29,7 +29,6 @@ class Graph:
         if name2 not in self.zones:
             raise GraphError(f"Zone '{name2}' not found!")
 
-        # duplicate check
         for conn in self.connections:
             if (conn.zone1.name == name1 and conn.zone2.name == name2) or \
                (conn.zone1.name == name2 and conn.zone2.name == name1):

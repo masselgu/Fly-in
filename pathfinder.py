@@ -4,6 +4,14 @@ from graph import Graph
 from zone import Zone
 
 
+ZONE_PRIORITY: dict[str, int] = {
+    "priority":   0,
+    "normal":     1,
+    "restricted": 2,
+    "blocked":    3,
+}
+
+
 class Pathfinder:
     """Dijkstra-based pathfinding engine for drone routing."""
 
@@ -15,8 +23,6 @@ class Pathfinder:
         """Calculate traversal cost based on zone type."""
         if zone.zone_type == "restricted":
             return 2.0
-        if zone.zone_type == "priority":
-            return 0.9
         return 1.0
 
     def _initialize_costs(self, start: str) -> dict[str, float]:
@@ -48,20 +54,7 @@ class Pathfinder:
         return route
 
     def compute_route(self, start: str, end: str) -> list[Zone]:
-        """
-        Compute optimal route from start to end zone.
-
-        Uses Dijkstra algorithm with priority queue for efficiency.
-        Accounts for zone types and movement costs.
-        Skips blocked zones automatically.
-
-        Args:
-            start: name of the departure zone
-            end: name of the destination zone
-
-        Returns:
-            list of Zone objects representing the optimal path
-        """
+        """Compute the single shortest path from start to end."""
         if start not in self.graph.zones:
             raise ParserError(
                 f"departure zone '{start}' does not exist in the map"
@@ -77,26 +70,22 @@ class Pathfinder:
         previous = self._initialize_previous()
         visited: set[str] = set()
 
-        # priority queue: (cost, zone_name)
-        pq: list[tuple[float, str]] = []
-        heapq.heappush(pq, (0.0, start))
+        start_zone = self.graph.zones[start]
+        pq: list[tuple[float, int, str]] = []
+        heapq.heappush(pq, (0.0, ZONE_PRIORITY[start_zone.zone_type], start))
 
         while pq:
-            current_cost, current = heapq.heappop(pq)
+            current_cost, _, current = heapq.heappop(pq)
 
-            # skip already processed zones
             if current in visited:
                 continue
 
-            # destination reached!
             if current == end:
                 break
 
             visited.add(current)
 
             for neighbor in self.graph.get_neighbors(current):
-
-                # blocked zones are impassable
                 if neighbor.zone_type == "blocked":
                     continue
 
@@ -105,9 +94,12 @@ class Pathfinder:
                 if new_cost < costs[neighbor.name]:
                     costs[neighbor.name] = new_cost
                     previous[neighbor.name] = current
-                    heapq.heappush(pq, (new_cost, neighbor.name))
+                    heapq.heappush(
+                        pq,
+                        (new_cost, ZONE_PRIORITY[neighbor.zone_type],
+                         neighbor.name)
+                    )
 
-        # no route exists
         if costs[end] == float("inf"):
             raise ParserError(
                 f"navigation failed — no flyable route exists "
@@ -116,13 +108,41 @@ class Pathfinder:
 
         return self._rebuild_route(previous, end)
 
-    def compute_all_routes(self, start: str,
-                           end: str,
-                           nb_drones: int) -> list[list[Zone]]:
+    def compute_k_routes(self, start: str, end: str,
+                         k: int = 5) -> list[list[Zone]]:
+        """Compute k disjoint routes by blocking already-used connections."""
         routes: list[list[Zone]] = []
-        primary = self.compute_route(start, end)
+        used_connections: set[tuple[str, str]] = set()
 
-        for _ in range(nb_drones):
-            routes.append(primary)
+        while len(routes) < k:
+            original_connections = self.graph.connections[:]
+            self.graph.connections = [
+                c for c in self.graph.connections
+                if (min(c.zone1.name, c.zone2.name),
+                    max(c.zone1.name, c.zone2.name)) not in used_connections
+            ]
+
+            try:
+                route = self.compute_route(start, end)
+            except Exception:
+                break
+            finally:
+                self.graph.connections = original_connections
+
+            route_names = [z.name for z in route]
+            if route_names not in [[z.name for z in r] for r in routes]:
+                for i in range(len(route) - 1):
+                    if route[i].name in (start, end) or \
+                     route[i + 1].name in (start, end):
+                        continue
+                    a = min(route[i].name, route[i + 1].name)
+                    b = max(route[i].name, route[i + 1].name)
+                    used_connections.add((a, b))
+                routes.append(route)
+
+        if not routes:
+            raise ParserError(
+                f"no route found between '{start}' and '{end}'"
+            )
 
         return routes

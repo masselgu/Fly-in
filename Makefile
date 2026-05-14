@@ -1,25 +1,21 @@
-NAME = main.py
-
 install:
-	pip install flake8 mypy --break-system-packages
+	pip3 install -r requirements.txt
 
 run:
-	python main.py maps/test1.txt
+	@python3 main.py map.txt
 
 debug:
-	python -m pdb main.py maps/test1.txt
-
-lint:
-	flake8 .
-	mypy . --warn-return-any --warn-unused-ignores \
-		--ignore-missing-imports --disallow-untyped-defs \
-		--check-untyped-defs
-
-lint-strict:
-	flake8 .
-	mypy . --strict
+	@python3 -m pdb main.py map.txt
 
 clean:
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type d -name .mypy_cache -exec rm -rf {} +
-	find . -name "*.pyc" -delete
+	@find -name "__pycache__" -exec rm -rf {} +
+	@rm -rf .mypy_cache
+
+lint:
+	python3 -m flake8 .
+	python3 -m  mypy . \
+		--warn-return-any \
+		--warn-unused-ignores \
+		--ignore-missing-imports \
+		--disallow-untyped-defs \
+		--check-untyped-defs

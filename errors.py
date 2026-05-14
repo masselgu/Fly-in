@@ -16,8 +16,3 @@ class GraphError(FlyInError):
 class ParserError(FlyInError):
     """Error related to file parsing"""
     pass
-
-
-class SimulationError(FlyInError):
-    """Error related to simulation"""
-    pass

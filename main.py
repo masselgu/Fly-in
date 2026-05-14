@@ -1,38 +1,41 @@
 import sys
-from parser import Parser
-from pathfinder import Pathfinder
-from simulation import Simulation
-from visual import Visual
 from errors import FlyInError
+from parser import Parser
+from simulation import Simulation
+from pathfinder import Pathfinder
+from visual import print_turn, print_summary
 
 
 def main() -> None:
-    """Entry point for the drone simulation."""
-    if len(sys.argv) != 2:
-        print("Usage: python main.py <map_file>")
+    """Entry point: parse map, find paths, run simulation, print log."""
+    if len(sys.argv) < 2:
+        print("Usage: python3 main.py <map_file>")
         sys.exit(1)
 
-    try:
-        p = Parser()
-        p.parse(sys.argv[1])
+    parser = Parser()
+    parser.parse(sys.argv[1])
 
-        finder = Pathfinder(p.graph)
+    graph = parser.graph
+    nb_drones = parser.nb_drones
+    start = parser.start_zone.name
+    end = parser.end_zone.name
 
-        sim = Simulation(
-            graph=p.graph,
-            pathfinder=finder,
-            start_zone=p.start_zone,
-            end_zone=p.end_zone,
-            nb_drones=p.nb_drones
-        )
+    pathfinder = Pathfinder(graph)
+    routes = pathfinder.compute_k_routes(start, end, k=5)
+    paths = [[zone.name for zone in route] for route in routes]
 
-        logs = sim.run()
-        Visual.display(logs, p.graph, p.nb_drones)
+    sim = Simulation(graph, paths, nb_drones, end)
+    logs = sim.run()
 
-    except FlyInError as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+    for i, line in enumerate(logs, 1):
+        print_turn(i, line)
+
+    print_summary(len(logs), nb_drones)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except FlyInError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
