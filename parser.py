@@ -248,6 +248,8 @@ class Parser:
                 lines = f.readlines()
         except FileNotFoundError:
             raise ParserError(f"File '{filename}' not found!")
+        except PermissionError:
+            raise ParserError(f"Permission denied to read file '{filename}'!")
 
         if not lines:
             raise ParserError("Empty map file!")
