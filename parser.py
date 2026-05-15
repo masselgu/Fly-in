@@ -27,7 +27,7 @@ class Parser:
             "max_link_capacity": 1
         }
 
-        if not data or not data.strip():
+        if not data.strip():
             return result
 
         valid_zone_keys = ["zone", "color", "max_drones", "max_drone"]
@@ -43,7 +43,7 @@ class Parser:
             key = item[:eq_index]
             value = item[eq_index + 1:]
 
-            if not key or not value:
+            if not key.strip() or not value.strip():
                 raise ParserError(
                     f"Line {line_number}: invalid metadata '{item}'"
                 )
@@ -68,7 +68,6 @@ class Parser:
                         "max_link_capacity must be positive!"
                     )
             else:
-                # normalize alias
                 if key == "max_drone":
                     key = "max_drones"
 
@@ -129,7 +128,6 @@ class Parser:
 
     def _handle_nb_drones(self, line: str, line_number: int) -> None:
         """Parse nb_drones line."""
-        # format: nb_drones: <int>
         parts = line.split(":", 1)
         if len(parts) != 2:
             raise ParserError(
@@ -151,7 +149,6 @@ class Parser:
 
     def _handle_hub(self, line: str, line_number: int) -> None:
         """Parse hub, start_hub, end_hub lines."""
-        # format: <type>: <name> <x> <y> [metadata]
         main, data = self._extract_bracket_data(line, line_number)
 
         colon_index = main.index(":")
@@ -159,7 +156,7 @@ class Parser:
         rest = main[colon_index + 1:].strip()
 
         parts = rest.split()
-        if len(parts) < 3:
+        if len(parts) != 3:
             raise ParserError(
                 f"Line {line_number}: "
                 "hub must have name x y"
@@ -169,13 +166,6 @@ class Parser:
         x_str = parts[1]
         y_str = parts[2]
 
-        # validate name
-        if not name or "-" in name or " " in name:
-            raise ParserError(
-                f"Line {line_number}: invalid zone name '{name}'"
-            )
-
-        # validate coordinates
         try:
             x = int(x_str)
             y = int(y_str)
@@ -213,7 +203,6 @@ class Parser:
 
     def _handle_connection(self, line: str, line_number: int) -> None:
         """Parse connection lines."""
-        # format: connection: <zone1>-<zone2> [metadata]
         main, data = self._extract_bracket_data(line, line_number)
 
         colon_index = main.index(":")
@@ -229,7 +218,7 @@ class Parser:
         zone1 = rest[:dash_index].strip()
         zone2 = rest[dash_index + 1:].strip()
 
-        if not zone1 or not zone2:
+        if not zone1.strip() or not zone2.strip():
             raise ParserError(
                 f"Line {line_number}: "
                 "connection must have two zone names"
@@ -253,6 +242,8 @@ class Parser:
                 lines = f.readlines()
         except FileNotFoundError:
             raise ParserError(f"File '{filename}' not found!")
+        except PermissionError:
+            raise ParserError(f"Permission denied for file '{filename}'!")
 
         if not lines:
             raise ParserError("Empty map file!")
@@ -263,7 +254,6 @@ class Parser:
             if not line:
                 continue
 
-            # nb_drones must be first
             if self.nb_drones == 0:
                 if not line.startswith("nb_drones:"):
                     raise ParserError(
@@ -273,20 +263,17 @@ class Parser:
                 self._handle_nb_drones(line, line_number)
                 continue
 
-            # nb_drones again?
             if line.startswith("nb_drones:"):
                 raise ParserError(
                     f"Line {line_number}: nb_drones already defined!"
                 )
 
-            # hub lines
             if (line.startswith("hub:") or
                     line.startswith("start_hub:") or
                     line.startswith("end_hub:")):
                 self._handle_hub(line, line_number)
                 continue
 
-            # connection lines
             if line.startswith("connection:"):
                 self._handle_connection(line, line_number)
                 continue
@@ -298,5 +285,24 @@ class Parser:
         # final validations
         if self.start_zone is None:
             raise ParserError("No start_hub defined!")
+        if self.start_zone.zone_type == "blocked":
+            raise ParserError("start_hub cannot be blocked!")
         if self.end_zone is None:
             raise ParserError("No end_hub defined!")
+        if self.end_zone.zone_type == "blocked":
+            raise ParserError("end_hub cannot be blocked!")
+        if self.start_zone.name == self.end_zone.name:
+            raise ParserError("start_hub and end_hub cannot be the same zone!")
+
+        coords: set[tuple[int, int]] = set()
+        for zone in self.graph.zones.values():
+            coord = (zone.x, zone.y)
+            if coord in coords:
+                raise ParserError(
+                    f"Duplicate coordinates ({zone.x}, {zone.y}) "
+                    f"for zone '{zone.name}'!"
+                )
+            coords.add(coord)
+
+        if not self.graph.connections:
+            raise ParserError("Map must have at least one connection!")

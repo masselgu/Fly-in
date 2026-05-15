@@ -28,7 +28,7 @@ def main() -> None:
     logs = sim.run()
 
     for i, line in enumerate(logs, 1):
-        print_turn(i, line)
+        print_turn(i, line, graph)
 
     print_summary(len(logs), nb_drones)
 

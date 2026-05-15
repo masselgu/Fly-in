@@ -138,6 +138,8 @@ class Pathfinder:
                     b = max(route[i].name, route[i + 1].name)
                     used_connections.add((a, b))
                 routes.append(route)
+            else:
+                break
 
         if not routes:
             raise ParserError(

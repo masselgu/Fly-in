@@ -13,7 +13,6 @@ class Simulation:
     ) -> None:
         self.graph = graph
         self.end_zone = end_zone
-        self.turn_counter = 0
 
         self.drones: list[Drone] = []
         for i in range(1, nb_drones + 1):
@@ -59,7 +58,6 @@ class Simulation:
         if zone.zone_type == "blocked":
             return False
 
-        # end zone accepts unlimited drones per subject rules
         if next_zone != self.end_zone:
             current = self.zone_usage.get(next_zone, 0)
             effective = (
@@ -82,11 +80,8 @@ class Simulation:
 
     def run(self) -> list[str]:
         """Run the simulation and return the turn-by-turn log."""
-        no_progress_streak = 0
 
         while not all(d.finished for d in self.drones):
-            self.turn_counter += 1
-
             leaving: dict[str, int] = {}
             entering: dict[str, int] = {}
             conn_used: dict[tuple[str, str], int] = {}
@@ -156,11 +151,6 @@ class Simulation:
 
             if turn_moves:
                 self.logs.append(" ".join(turn_moves))
-                no_progress_streak = 0
-            else:
-                no_progress_streak += 1
 
-            if no_progress_streak > 20:
-                break
 
         return self.logs
