@@ -3,8 +3,11 @@ from zone import Zone
 
 
 class Connection:
+    """Represents a bidirectional connection between two zones with a
+    maximum capacity."""
     def __init__(self, zone1: Zone, zone2: Zone,
                  max_link_capacity: int = 1) -> None:
+        """Initialize a connection between two zones."""
         if not isinstance(max_link_capacity, int) or max_link_capacity < 1:
             raise GraphError(f"Invalid capacity: {max_link_capacity}")
         self.zone1 = zone1
@@ -13,17 +16,21 @@ class Connection:
 
 
 class Graph:
+    """Represents the entire zone graph, including zones and connections."""
     def __init__(self) -> None:
+        """Initialize the graph with empty zone and connection lists."""
         self.zones: dict[str, Zone] = {}
         self.connections: list[Connection] = []
 
     def add_zone(self, zone: Zone) -> None:
+        """Add a zone to the graph."""
         if zone.name in self.zones:
             raise GraphError(f"Zone '{zone.name}' already exists!")
         self.zones[zone.name] = zone
 
     def add_connection(self, name1: str, name2: str,
                        max_link_capacity: int = 1) -> None:
+        """Add a connection between two zones in the graph."""
         if name1 not in self.zones:
             raise GraphError(f"Zone '{name1}' not found!")
         if name2 not in self.zones:
@@ -41,6 +48,7 @@ class Graph:
         self.connections.append(Connection(zone1, zone2, max_link_capacity))
 
     def get_neighbors(self, name: str) -> list[Zone]:
+        """Return a list of zones directly connected to the given zone."""
         neighbors = []
         for conn in self.connections:
             if conn.zone1.name == name:

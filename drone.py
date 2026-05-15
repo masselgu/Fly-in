@@ -1,12 +1,12 @@
 class Drone:
     """Represents a single drone navigating through the zone graph."""
-
     def __init__(
         self,
         drone_id: int,
         start_zone: str,
         path: list[str],
     ) -> None:
+        """Initialize the drone with its ID, starting zone, and path."""
         self.drone_id = drone_id
         self.current_zone = start_zone
         self.path = path

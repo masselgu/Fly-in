@@ -2,10 +2,14 @@ from errors import ZoneError
 
 
 class Zone:
+    """Represents a zone in the graph with coordinates, type, color,
+    and drone capacity."""
     def __init__(self, name: str, x: int, y: int,
                  zone_type: str = "normal",
                  color: str | None = None,
                  max_drones: int = 1) -> None:
+        """Initialize a Zone with name, coordinates, type, optional color,
+        and max drone capacity."""
 
         if not name or '-' in name or ' ' in name:
             raise ZoneError(f"Invalid zone name: '{name}'")

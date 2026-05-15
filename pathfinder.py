@@ -2,9 +2,10 @@ import heapq
 from errors import ParserError
 from graph import Graph
 from zone import Zone
+from typing import List, Dict
 
 
-ZONE_PRIORITY: dict[str, int] = {
+ZONE_PRIORITY: Dict[str, int] = {
     "priority":   0,
     "normal":     1,
     "restricted": 2,
@@ -25,25 +26,25 @@ class Pathfinder:
             return 2.0
         return 1.0
 
-    def _initialize_costs(self, start: str) -> dict[str, float]:
+    def _initialize_costs(self, start: str) -> Dict[str, float]:
         """Set up initial cost table with infinity for all zones."""
-        costs: dict[str, float] = {}
+        costs: Dict[str, float] = {}
         for name in self.graph.zones:
             costs[name] = float("inf")
         costs[start] = 0.0
         return costs
 
-    def _initialize_previous(self) -> dict[str, str | None]:
+    def _initialize_previous(self) -> Dict[str, str | None]:
         """Set up previous zone tracker for path reconstruction."""
-        previous: dict[str, str | None] = {}
+        previous: Dict[str, str | None] = {}
         for name in self.graph.zones:
             previous[name] = None
         return previous
 
-    def _rebuild_route(self, previous: dict[str, str | None],
-                       end: str) -> list[Zone]:
+    def _rebuild_route(self, previous: Dict[str, str | None],
+                       end: str) -> List[Zone]:
         """Reconstruct full route from end zone back to start."""
-        route: list[Zone] = []
+        route: List[Zone] = []
         current: str | None = end
 
         while current is not None:
@@ -53,7 +54,7 @@ class Pathfinder:
         route.reverse()
         return route
 
-    def compute_route(self, start: str, end: str) -> list[Zone]:
+    def compute_route(self, start: str, end: str) -> List[Zone]:
         """Compute the single shortest path from start to end."""
         if start not in self.graph.zones:
             raise ParserError(
@@ -71,7 +72,7 @@ class Pathfinder:
         visited: set[str] = set()
 
         start_zone = self.graph.zones[start]
-        pq: list[tuple[float, int, str]] = []
+        pq: List[tuple[float, int, str]] = []
         heapq.heappush(pq, (0.0, ZONE_PRIORITY[start_zone.zone_type], start))
 
         while pq:
@@ -109,9 +110,9 @@ class Pathfinder:
         return self._rebuild_route(previous, end)
 
     def compute_k_routes(self, start: str, end: str,
-                         k: int = 5) -> list[list[Zone]]:
+                         k: int = 5) -> List[List[Zone]]:
         """Compute k disjoint routes by blocking already-used connections."""
-        routes: list[list[Zone]] = []
+        routes: List[List[Zone]] = []
         used_connections: set[tuple[str, str]] = set()
 
         while len(routes) < k:
@@ -139,6 +140,8 @@ class Pathfinder:
                     b = max(route[i].name, route[i + 1].name)
                     used_connections.add((a, b))
                 routes.append(route)
+            else:
+                break
 
         if not routes:
             raise ParserError(

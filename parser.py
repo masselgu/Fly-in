@@ -4,8 +4,9 @@ from graph import Graph
 
 
 class Parser:
-
+    """Parser for reading map files and building the graph structure."""
     def __init__(self) -> None:
+        """Initialize parser state: drone count, start/end zones, and graph."""
         self.nb_drones: int = 0
         self.start_zone: Zone | None = None
         self.end_zone: Zone | None = None
@@ -27,7 +28,7 @@ class Parser:
             "max_link_capacity": 1
         }
 
-        if not data or not data.strip():
+        if not data.strip():
             return result
 
         valid_zone_keys = ["zone", "color", "max_drones", "max_drone"]
@@ -43,7 +44,7 @@ class Parser:
             key = item[:eq_index]
             value = item[eq_index + 1:]
 
-            if not key or not value:
+            if not key.strip() or not value.strip():
                 raise ParserError(
                     f"Line {line_number}: invalid metadata '{item}'"
                 )
@@ -139,8 +140,7 @@ class Parser:
             value = int(value_str)
         except ValueError:
             raise ParserError(
-                f"Line {line_number}: "
-                "first valid line must define 'nb_drones: <int>'"
+                f"Line {line_number}: nb_drones must be an integer!"
             )
         if value < 1:
             raise ParserError(
@@ -157,21 +157,20 @@ class Parser:
         rest = main[colon_index + 1:].strip()
 
         parts = rest.split()
-        if len(parts) < 3:
+        if len(parts) != 3:
             raise ParserError(
                 f"Line {line_number}: "
-                "hub must have name x y"
+                "hub must have <name> <x> <y>"
             )
 
         name = parts[0]
-        x_str = parts[1]
-        y_str = parts[2]
-
         if not name or "-" in name or " " in name:
             raise ParserError(
                 f"Line {line_number}: invalid zone name '{name}'"
             )
 
+        x_str = parts[1]
+        y_str = parts[2]
         try:
             x = int(x_str)
             y = int(y_str)
@@ -221,10 +220,10 @@ class Parser:
             )
 
         dash_index = rest.index("-")
-        zone1 = rest[:dash_index].strip()
-        zone2 = rest[dash_index + 1:].strip()
+        zone1 = rest[:dash_index]
+        zone2 = rest[dash_index + 1:]
 
-        if not zone1 or not zone2:
+        if not zone1.strip() or not zone2.strip():
             raise ParserError(
                 f"Line {line_number}: "
                 "connection must have two zone names"
@@ -249,7 +248,7 @@ class Parser:
         except FileNotFoundError:
             raise ParserError(f"File '{filename}' not found!")
         except PermissionError:
-            raise ParserError(f"Permission denied to read file '{filename}'!")
+            raise ParserError(f"Permission denied for file '{filename}'!")
 
         if not lines:
             raise ParserError("Empty map file!")
@@ -290,5 +289,24 @@ class Parser:
 
         if self.start_zone is None:
             raise ParserError("No start_hub defined!")
+        if self.start_zone.zone_type == "blocked":
+            raise ParserError("start_hub cannot be blocked!")
         if self.end_zone is None:
             raise ParserError("No end_hub defined!")
+        if self.end_zone.zone_type == "blocked":
+            raise ParserError("end_hub cannot be blocked!")
+        if self.start_zone.name == self.end_zone.name:
+            raise ParserError("start_hub and end_hub cannot be the same zone!")
+
+        coords: set[tuple[int, int]] = set()
+        for zone in self.graph.zones.values():
+            coord = (zone.x, zone.y)
+            if coord in coords:
+                raise ParserError(
+                    f"Duplicate coordinates ({zone.x}, {zone.y}) "
+                    f"for zone '{zone.name}'!"
+                )
+            coords.add(coord)
+
+        if not self.graph.connections:
+            raise ParserError("Map must have at least one connection!")

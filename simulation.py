@@ -1,5 +1,6 @@
 from graph import Graph
 from drone import Drone
+from typing import List, Dict
 
 
 class Simulation:
@@ -7,26 +8,27 @@ class Simulation:
     def __init__(
         self,
         graph: Graph,
-        paths: list[list[str]],
+        paths: List[List[str]],
         nb_drones: int,
         end_zone: str
     ) -> None:
+        """Initialize the simulation with the graph, drone paths,
+        and end zone."""
         self.graph = graph
         self.end_zone = end_zone
-        self.turn_counter = 0
 
-        self.drones: list[Drone] = []
+        self.drones: List[Drone] = []
         for i in range(1, nb_drones + 1):
             path = paths[(i - 1) % len(paths)]
             self.drones.append(Drone(i, path[0], path))
 
-        self.logs: list[str] = []
+        self.logs: List[str] = []
 
         start_name = self.drones[0].path[0]
-        self.zone_usage: dict[str, int] = {z: 0 for z in self.graph.zones}
+        self.zone_usage: Dict[str, int] = {z: 0 for z in self.graph.zones}
         self.zone_usage[start_name] = nb_drones
 
-        self.connection_map: dict[tuple[str, str], object] = {}
+        self.connection_map: Dict[tuple[str, str], object] = {}
         for conn in self.graph.connections:
             key = (
                 min(conn.zone1.name, conn.zone2.name),
@@ -46,9 +48,9 @@ class Simulation:
         self,
         drone: Drone,
         next_zone: str,
-        leaving: dict[str, int],
-        entering: dict[str, int],
-        conn_used: dict[tuple[str, str], int],
+        leaving: Dict[str, int],
+        entering: Dict[str, int],
+        conn_used: Dict[tuple[str, str], int],
     ) -> bool:
         """Check if a drone can move to next_zone this turn."""
         if next_zone not in self.graph.zones:
@@ -59,7 +61,6 @@ class Simulation:
         if zone.zone_type == "blocked":
             return False
 
-        # end zone accepts unlimited drones per subject rules
         if next_zone != self.end_zone:
             current = self.zone_usage.get(next_zone, 0)
             effective = (
@@ -80,19 +81,16 @@ class Simulation:
 
         return True
 
-    def run(self) -> list[str]:
+    def run(self) -> List[str]:
         """Run the simulation and return the turn-by-turn log."""
-        no_progress_streak = 0
 
         while not all(d.finished for d in self.drones):
-            self.turn_counter += 1
+            leaving: Dict[str, int] = {}
+            entering: Dict[str, int] = {}
+            conn_used: Dict[tuple[str, str], int] = {}
+            turn_moves: List[str] = []
 
-            leaving: dict[str, int] = {}
-            entering: dict[str, int] = {}
-            conn_used: dict[tuple[str, str], int] = {}
-            turn_moves: list[str] = []
-
-            candidates: list[tuple[Drone, str]] = []
+            candidates: List[tuple[Drone, str]] = []
             for drone in sorted(self.drones, key=lambda d: d.drone_id):
                 if drone.finished:
                     continue
@@ -105,7 +103,7 @@ class Simulation:
                 if nxt is not None:
                     candidates.append((drone, nxt))
 
-            executed: list[tuple[Drone, str]] = []
+            executed: List[tuple[Drone, str]] = []
 
             for drone, next_zone in candidates:
                 zone = self.graph.zones[next_zone]
@@ -117,7 +115,8 @@ class Simulation:
                         - leaving.get(next_zone, 0)
                         + entering.get(next_zone, 0)
                     )
-                    if effective < zone.max_drones or next_zone == self.end_zone:
+                    if effective < zone.max_drones or \
+                       next_zone == self.end_zone:
                         executed.append((drone, next_zone))
                 else:
                     if self.can_move(
@@ -138,7 +137,9 @@ class Simulation:
                 old_zone = drone.current_zone
 
                 self.zone_usage[old_zone] -= 1
-                self.zone_usage[next_zone] += 1
+                self.zone_usage[next_zone] = (
+                    self.zone_usage.get(next_zone, 0) + 1
+                )
 
                 if drone.in_transit:
                     drone.complete_transit()
@@ -154,11 +155,5 @@ class Simulation:
 
             if turn_moves:
                 self.logs.append(" ".join(turn_moves))
-                no_progress_streak = 0
-            else:
-                no_progress_streak += 1
-
-            if no_progress_streak > 20:
-                break
 
         return self.logs
