@@ -83,7 +83,6 @@ class Simulation:
 
     def run(self) -> List[str]:
         """Run the simulation and return the turn-by-turn log."""
-
         while not all(d.finished for d in self.drones):
             leaving: Dict[str, int] = {}
             entering: Dict[str, int] = {}
@@ -137,9 +136,7 @@ class Simulation:
                 old_zone = drone.current_zone
 
                 self.zone_usage[old_zone] -= 1
-                self.zone_usage[next_zone] = (
-                    self.zone_usage.get(next_zone, 0) + 1
-                )
+                self.zone_usage[next_zone] += 1
 
                 if drone.in_transit:
                     drone.complete_transit()

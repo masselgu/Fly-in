@@ -14,7 +14,6 @@ COLOR_MAP: dict[str, str] = {
     "orange":  Fore.YELLOW,
     "violet":  Fore.MAGENTA,
     "gray":    Fore.WHITE,
-    "rainbow": Fore.CYAN,
 }
 
 
@@ -28,7 +27,6 @@ def zone_color(zone_name: str, graph: Graph) -> str:
 
 def print_turn(turn: int, moves: str, graph: Graph) -> None:
     """Print one turn — each token colored by its destination zone."""
-    print(f"Turn {turn:>3}: ", end="")
     for token in moves.split():
         dash = token.index("-")
         zone_name = token[dash + 1:]

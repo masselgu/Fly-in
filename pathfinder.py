@@ -133,8 +133,8 @@ class Pathfinder:
             route_names = [z.name for z in route]
             if route_names not in [[z.name for z in r] for r in routes]:
                 for i in range(len(route) - 1):
-                    if route[i].name in (start, end) or \
-                     route[i + 1].name in (start, end):
+                    if route[i].name == start or \
+                     route[i + 1].name == end:
                         continue
                     a = min(route[i].name, route[i + 1].name)
                     b = max(route[i].name, route[i + 1].name)

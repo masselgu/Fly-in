@@ -122,6 +122,12 @@ class Parser:
             bracket_end = line.index("]")
             main = line[:bracket_start].strip()
             data = line[bracket_start + 1:bracket_end].strip()
+            after_bracket = line[bracket_end + 1:].strip()
+            if after_bracket:
+                raise ParserError(
+                    f"Line {line_number}: unexpected content after "
+                    "closing bracket"
+                )
         else:
             main = line.strip()
             data = ""
