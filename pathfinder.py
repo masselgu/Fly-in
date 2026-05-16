@@ -64,8 +64,6 @@ class Pathfinder:
             raise ParserError(
                 f"destination zone '{end}' does not exist in the map"
             )
-        if start == end:
-            return [self.graph.zones[start]]
 
         costs = self._initialize_costs(start)
         previous = self._initialize_previous()
