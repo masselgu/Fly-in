@@ -1,4 +1,4 @@
-from graph import Graph
+from graph import Graph, Connection
 from drone import Drone
 from typing import List, Dict
 
@@ -28,7 +28,7 @@ class Simulation:
         self.zone_usage: Dict[str, int] = {z: 0 for z in self.graph.zones}
         self.zone_usage[start_name] = nb_drones
 
-        self.connection_map: Dict[tuple[str, str], object] = {}
+        self.connection_map: Dict[tuple[str, str], Connection] = {}
         for conn in self.graph.connections:
             key = (
                 min(conn.zone1.name, conn.zone2.name),

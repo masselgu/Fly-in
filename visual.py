@@ -1,19 +1,17 @@
-from colorama import Fore, Style, init
 from graph import Graph
 
-init(autoreset=True)
+RESET = "\033[0m"
 
 COLOR_MAP: dict[str, str] = {
-    "red":     Fore.RED,
-    "green":   Fore.GREEN,
-    "blue":    Fore.BLUE,
-    "yellow":  Fore.YELLOW,
-    "cyan":    Fore.CYAN,
-    "magenta": Fore.MAGENTA,
-    "white":   Fore.WHITE,
-    "orange":  Fore.YELLOW,
-    "violet":  Fore.MAGENTA,
-    "gray":    Fore.WHITE,
+    "red":    "\033[91m",
+    "blue":   "\033[94m",
+    "green":  "\033[92m",
+    "white":  "\033[97m",
+    "purple": "\033[95m",
+    "yellow": "\033[93m",
+    "orange": "\033[38;5;214m",
+    "pink":   "\033[38;5;213m",
+    "gray":   "\033[38;5;245m",
 }
 
 
@@ -22,20 +20,22 @@ def zone_color(zone_name: str, graph: Graph) -> str:
     zone = graph.zones.get(zone_name)
     if zone and zone.color and zone.color.lower() in COLOR_MAP:
         return COLOR_MAP[zone.color.lower()]
-    return Fore.WHITE
+    return "\033[97m"
 
 
-def print_turn(turn: int, moves: str, graph: Graph) -> None:
+def print_turn(moves: str, graph: Graph) -> None:
     """Print one turn — each token colored by its destination zone."""
     for token in moves.split():
         dash = token.index("-")
         zone_name = token[dash + 1:]
         color = zone_color(zone_name, graph)
-        print(f"{color}{token}{Style.RESET_ALL}  ", end="")
+        print(f"{color}{token}{RESET} ", end="")
     print()
 
 
 def print_summary(total_turns: int, nb_drones: int) -> None:
     """Print final summary."""
-    print(f"\n{Fore.GREEN}✓ {nb_drones} drone(s) delivered in "
-          f"{Fore.YELLOW}{total_turns}{Fore.GREEN} turn(s).{Style.RESET_ALL}")
+    g = COLOR_MAP["green"]
+    y = COLOR_MAP["yellow"]
+    print(f"\n{g}✓ {y}{nb_drones}{g} drone(s) delivered in "
+          f"{y}{total_turns}{g} turn(s).{RESET}")

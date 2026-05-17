@@ -17,18 +17,18 @@ def main() -> None:
 
     graph = parser.graph
     nb_drones = parser.nb_drones
-    start = parser.start_zone.name
-    end = parser.end_zone.name
+    start = parser.start_zone.name if parser.start_zone else ""
+    end = parser.end_zone.name if parser.end_zone else ""
 
     pathfinder = Pathfinder(graph)
-    routes = pathfinder.compute_k_routes(start, end, k=5)
+    routes = pathfinder.compute_k_routes(start, end)
     paths = [[zone.name for zone in route] for route in routes]
 
     sim = Simulation(graph, paths, nb_drones, end)
     logs = sim.run()
 
-    for i, line in enumerate(logs, 1):
-        print_turn(i, line, graph)
+    for line in logs:
+        print_turn(line, graph)
 
     print_summary(len(logs), nb_drones)
 

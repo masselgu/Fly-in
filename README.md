@@ -4,16 +4,14 @@
 
 ## Description
 
-Fly-in is a drone routing simulation system. The goal is to move a fleet of drones
-from a start zone to an end zone through a network of connected zones, in the fewest
-possible simulation turns.
+Fly-in is a drone routing simulation system. The goal is to move a fleet of drones from a start zone to an end zone through a network of connected zones, in the fewest possible simulation turns.
 
 The system handles:
 - Multiple drone routing across parallel paths
 - Zone types: normal, restricted, priority, blocked
 - Zone and connection capacity constraints
 - 2-turn transit through restricted zones
-- Colored terminal visual output
+- Colored terminal visual output based on zone colors defined in the map
 
 ## Instructions
 
@@ -54,6 +52,8 @@ make clean
 ```
 
 ## Map Format
+
+```
 nb_drones: 5
 start_hub: hub 0 0 [color=green]
 end_hub: goal 10 10 [color=yellow]
@@ -63,6 +63,7 @@ hub: blocked 5 5 [zone=blocked]
 connection: hub-zone1
 connection: zone1-zone2 [max_link_capacity=2]
 connection: zone2-goal
+```
 
 - `zone=` can be `normal`, `restricted`, `priority`, or `blocked`
 - `max_drones=` sets how many drones can occupy a zone simultaneously (default 1)
@@ -71,20 +72,19 @@ connection: zone2-goal
 
 ## Algorithm
 
-### Pathfinding — Yen's k-shortest paths
+### Pathfinding — Dijkstra with connection-blocking diversification
 
-The pathfinder uses **Dijkstra's algorithm** as its base, extended with **Yen's
-k-shortest paths algorithm** to find up to 5 distinct routes from start to end.
+The pathfinder uses **Dijkstra's algorithm** to find the shortest path from start to end. To discover multiple distinct routes, a connection-blocking heuristic is applied: after each path is found, the middle connections of that path are temporarily blocked and Dijkstra is run again, forcing it to find a different route. This continues until no more distinct paths exist.
 
 Movement costs per zone type:
-- `normal` → 1.0
-- `priority` → 0.9 (preferred)
-- `restricted` → 2.0 (costs 2 turns)
+- `normal` → 1.0 turn
+- `priority` → 1.0 turn (preferred via tiebreaker in the priority queue)
+- `restricted` → 2.0 turns
 - `blocked` → unreachable
 
-Paths are sorted by total cost so drones are assigned to the cheapest routes first.
-Drones cycle across all available paths using `drone_index % num_paths`, ensuring
-parallel routing when multiple paths exist.
+Priority zones are preferred by assigning them a lower tiebreaker value in the heap tuple, so Dijkstra naturally picks them over normal zones when costs are equal.
+
+Drones are assigned to paths using `drone_index % num_paths`, distributing them across all available routes for parallel routing.
 
 ### Simulation — turn-by-turn scheduling
 
@@ -102,40 +102,43 @@ Special rules respected:
 
 ### Complexity
 
-- Dijkstra: O((V + E) log V) per call
-- Yen's k-shortest: O(k * V * (V + E) log V)
-- Simulation per turn: O(D) where D is the number of active drones
+- Dijkstra: O(V × E) per call due to connection list scan in get_neighbors
+- Path diversification: O(P × V × E) where P is the number of distinct paths found
 - Paths are computed once and cached — no recalculation during simulation
+- Space: O(V + E + D + T) where T is total turns
 
 ## Visual Representation
 
-The terminal output uses `colorama` for colored display:
-- Each drone has a consistent color across all turns (magenta, blue, cyan, green, yellow)
-- Zone names are shown in cyan
-- A summary line at the end shows total turns and drones delivered
+The terminal output uses `colorama` and ANSI 256-color codes for colored display:
+- Each token `D<ID>-<zone>` is colored based on the destination zone's color defined in the map
+- Colors are mapped from zone color names (red, blue, green, yellow, orange, purple, pink, gray, white) to terminal ANSI codes
+- Unknown colors default to bright white
+- A summary line at the end shows total turns and drones delivered in green and yellow
+
+This makes it easy to visually track which zones drones are moving to at each turn, since each zone has a consistent color matching its map definition.
 
 Example output:
-Turn   1: D1-middle  D2-middle
-Turn   2: D1-goal    D2-goal
-✓ All 2 drone(s) delivered in 2 turn(s).
+```
+D1-junction  D2-junction
+D1-path_a  D2-path_b  D3-junction  D4-junction
+D1-goal  D2-goal  D3-path_a  D4-path_b
+D3-goal  D4-goal
+
+✓ 4 drone(s) delivered in 4 turn(s).
+```
 
 ## Resources
 
-- Dijkstra's algorithm: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
-- Yen's k-shortest paths: https://en.wikipedia.org/wiki/Yen%27s_k-shortest_path_algorithm
+- Dijkstra's algorithm visual: https://visualgo.net/en
+- Graph representations: https://www.geeksforgeeks.org/dsa/graph-and-its-representations/
+- Heap and priority queue: https://www.chrislaux.com
 - Python heapq: https://docs.python.org/3/library/heapq.html
-- colorama: https://pypi.org/project/colorama/
-- Python type hints: https://docs.python.org/3/library/typing.html
-- flake8: https://flake8.pycqa.org/
-- mypy: https://mypy.readthedocs.io/
+
 
 ### AI Usage
 
-Claude (Anthropic) was used during this project for:
-- Identifying and fixing bugs in the simulation capacity logic
-- Implementing Yen's k-shortest paths algorithm
-- Writing the `visual.py` colored terminal output
-- Generating test map files to cover edge cases
-- Explaining algorithm complexity and design tradeoffs
+- Explaining concepts such as Dijkstra's algorithm, graph theory, heap data structures, and Big O complexity
+- Helping understand and debug existing code logic
+- Answering questions about Python type hints, mypy, and flake8
 
-All AI-generated code was reviewed, tested, and understood before being included.
+All code was written, reviewed, tested, and understood by the author before being included in the project.

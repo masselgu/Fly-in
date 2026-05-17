@@ -107,13 +107,12 @@ class Pathfinder:
 
         return self._rebuild_route(previous, end)
 
-    def compute_k_routes(self, start: str, end: str,
-                         k: int = 5) -> List[List[Zone]]:
+    def compute_k_routes(self, start: str, end: str) -> List[List[Zone]]:
         """Compute k disjoint routes by blocking already-used connections."""
         routes: List[List[Zone]] = []
         used_connections: set[tuple[str, str]] = set()
 
-        while len(routes) < k:
+        while True:
             original_connections = self.graph.connections[:]
             self.graph.connections = [
                 c for c in self.graph.connections
