@@ -1,22 +1,11 @@
-# Medium Level 2: Circular loop with restricted zones
-nb_drones: 5
+# Easy Level 1: Simple linear path
+nb_drones: 2
 
-start_hub: start 0 0 
-hub: b 2 0 
-hub: c 2 1 
-hub: d 1 1
-hub: e 3 0 [max_drone=2 color=gray]
-hub: f 3 1 
-end_hub: goal 4 0 
+start_hub: start 0 0 [color=green]
+hub: waypoint1 1 0 [color=red]
+hub: waypoint2 2 0 [color=blue]
+end_hub: goal 3 0 [color=rainbow]
 
-connection: start-b 
-connection: start-c 
-connection: start-d
-connection: b-e 
-connection: b-d 
-connection: b-c 
-connection: d-e 
-connection: d-f 
-connection: f-goal
-connection: f-c
-connection: e-goal
+connection: start-waypoint1
+connection: waypoint1-waypoint2
+connection: waypoint2-goal

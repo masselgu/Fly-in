@@ -1,6 +1,7 @@
 from errors import ParserError
 from zone import Zone
 from graph import Graph
+import matplotlib.colors as mcolors
 
 
 class Parser:
@@ -66,7 +67,7 @@ class Parser:
                 if result["max_link_capacity"] < 1:
                     raise ParserError(
                         f"Line {line_number}: "
-                        "max_link_capacity must be positive!"
+                        "max_link_capacity must be positive and non-zero! "
                     )
             else:
                 if key == "max_drone":
@@ -87,10 +88,11 @@ class Parser:
                     result["zone_type"] = value
 
                 elif key == "color":
-                    if not value.isalpha():
+                    if value.lower() != "rainbow" \
+                     and value.lower() not in mcolors.CSS4_COLORS:
                         raise ParserError(
-                            f"Line {line_number}: color must be "
-                            f"a single word got '{value}'"
+                            f"Line {line_number}: invalid color '{value}' "
+                            "expected a valid color name"
                         )
                     result["color"] = value
 
@@ -105,7 +107,7 @@ class Parser:
                     if result["max_drones"] < 1:
                         raise ParserError(
                             f"Line {line_number}: "
-                            "max_drones must be positive!"
+                            "max_drones must be positive and non-zero!"
                         )
 
         return result
@@ -142,6 +144,10 @@ class Parser:
                 "first valid line must define 'nb_drones: <int>'"
             )
         value_str = parts[1].strip()
+        if not value_str:
+            raise ParserError(
+                f"Line {line_number}: nb_drones value is missing!"
+            )
         try:
             value = int(value_str)
         except ValueError:

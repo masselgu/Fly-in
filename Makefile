@@ -2,10 +2,10 @@ install:
 	pip install -r requirements.txt
 
 run:
-	@python3 main.py map.txt
+	@python3 main.py ${FILE}
 
 debug:
-	@python3 -m pdb main.py map.txt
+	@python3 -m pdb main.py ${FILE}
 
 clean:
 	@find -name "__pycache__" -exec rm -rf {} +
