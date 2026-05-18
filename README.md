@@ -15,22 +15,30 @@ The system handles:
 
 ## Instructions
 
+### Requirements
+
+- Python 3.10 or later
+- Dependencies listed in `requirements.txt`:
+  - `mypy` — static type checking
+  - `flake8` — code style linting
+  - `matplotlib` - matplotlib.colors for colors
+
+
 ### Install dependencies
 
 ```bash
 make install
 ```
 
-### Run the simulation
+### Run the code
 
 ```bash
 make run
 ```
-
-This runs the simulation on `map.txt` by default. To use a custom map:
+or
 
 ```bash
-python3 main.py my_map.txt
+python3 main.py <file.txt>
 ```
 
 ### Lint
@@ -69,6 +77,7 @@ connection: zone2-goal
 - `max_drones=` sets how many drones can occupy a zone simultaneously (default 1)
 - `max_link_capacity=` sets how many drones can cross a connection per turn (default 1)
 - Comments start with `#`
+- Zone names cannot contain dashes or spaces
 
 ## Algorithm
 
@@ -102,20 +111,27 @@ Special rules respected:
 
 ### Complexity
 
-- Dijkstra: O(V × E) per call due to connection list scan in get_neighbors
+- Dijkstra time: O(V × E) per call — connection list scan in `get_neighbors`
 - Path diversification: O(P × V × E) where P is the number of distinct paths found
-- Paths are computed once and cached — no recalculation during simulation
-- Space: O(V + E + D + T) where T is total turns
+- Simulation per turn: O(D) where D is the number of active drones
+- Simulation total: O(T × D) where T is total turns
+- Space: O(V + E + D + T)
 
 ## Visual Representation
 
-The terminal output uses `colorama` and ANSI 256-color codes for colored display:
-- Each token `D<ID>-<zone>` is colored based on the destination zone's color defined in the map
-- Colors are mapped from zone color names (red, blue, green, yellow, orange, purple, pink, gray, white) to terminal ANSI codes
-- Unknown colors default to bright white
-- A summary line at the end shows total turns and drones delivered in green and yellow
+The terminal output uses `matplotlib.colors` for robust and consistent color handling.
 
-This makes it easy to visually track which zones drones are moving to at each turn, since each zone has a consistent color matching its map definition.
+- Only the **zone part** of each movement token (`D<ID>-<zone>`) is colored, while the drone identifier remains unchanged for clarity
+- Colors are resolved using `matplotlib.colors`, allowing support for a wide range of standard and named colors
+- Each zone color is defined in the map and consistently applied during the simulation
+- If a color is invalid, an error is raised to enforce strict input validation
+
+This design improves readability by clearly separating drone identifiers from destination zones, while ensuring that all visual elements strictly follow the map configuration.
+
+Example input:
+```
+make run FILE=map.txt
+```
 
 Example output:
 ```
@@ -132,13 +148,12 @@ D3-goal  D4-goal
 - Dijkstra's algorithm visual: https://visualgo.net/en
 - Graph representations: https://www.geeksforgeeks.org/dsa/graph-and-its-representations/
 - Heap and priority queue: https://www.chrislaux.com
-- Python heapq: https://docs.python.org/3/library/heapq.html
 
 
 ### AI Usage
 
-- Explaining concepts such as Dijkstra's algorithm, graph theory, heap data structures, and Big O complexity
-- Helping understand and debug existing code logic
-- Answering questions about Python type hints, mypy, and flake8
+- Used to generate additional test cases to validate edge cases
+- Provided resources and references for understanding key concepts
+- Helped identify useful documentation and learning materials
+- Suggested external readings related to graphs, Dijkstra’s algorithm, and Python tooling
 
-All code was written, reviewed, tested, and understood by the author before being included in the project.
