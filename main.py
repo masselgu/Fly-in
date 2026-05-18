@@ -9,7 +9,8 @@ from visual import print_turn, print_summary
 def main() -> None:
     """Entry point: parse map, find paths, run simulation, print log."""
     if len(sys.argv) < 2:
-        print("Usage: python3 main.py <map_file>")
+        print("Usage: 'python3 main.py <map_file>' or "
+              "'make run FILE=<map_file>'")
         sys.exit(1)
 
     parser = Parser()
