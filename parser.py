@@ -137,7 +137,7 @@ class Parser:
 
     def _handle_nb_drones(self, line: str, line_number: int) -> None:
         """Parse nb_drones line."""
-        parts = line.split(":", 1)
+        parts = line.split(":")
         if len(parts) != 2:
             raise ParserError(
                 f"Line {line_number}: "
@@ -307,8 +307,6 @@ class Parser:
             raise ParserError("No end_hub defined!")
         if self.end_zone.zone_type == "blocked":
             raise ParserError("end_hub cannot be blocked!")
-        if self.start_zone.name == self.end_zone.name:
-            raise ParserError("start_hub and end_hub cannot be the same zone!")
 
         coords: set[tuple[int, int]] = set()
         for zone in self.graph.zones.values():
