@@ -6,7 +6,13 @@ class Drone:
         start_zone: str,
         path: list[str],
     ) -> None:
-        """Initialize the drone with its ID, starting zone, and path."""
+        """Initialize the drone with its ID, starting zone, and path.
+
+        Args:
+            drone_id: Unique identifier for this drone.
+            start_zone: Name of the starting zone.
+            path: Ordered list of zone names from start to destination.
+        """
         self.drone_id = drone_id
         self.current_zone = start_zone
         self.path = path
@@ -16,7 +22,11 @@ class Drone:
         self.transit_target = ""
 
     def next_zone(self) -> str | None:
-        """Return the next zone in the path, or None if already at end."""
+        """Return the next zone in the path, or None if at the end.
+
+        Returns:
+            Name of the next zone, or None if the drone has no more steps.
+        """
         if self.path_index + 1 < len(self.path):
             return self.path[self.path_index + 1]
         return None
@@ -29,7 +39,11 @@ class Drone:
             self.finished = True
 
     def start_transit(self, target_zone: str) -> None:
-        """Begin a 2-turn transit toward a restricted zone."""
+        """Begin a 2-turn transit toward a restricted zone.
+
+        Args:
+            target_zone: Name of the restricted zone to transit into.
+        """
         self.in_transit = True
         self.transit_target = target_zone
         self.path_index += 1

@@ -8,8 +8,19 @@ class Zone:
                  zone_type: str = "normal",
                  color: str | None = None,
                  max_drones: int = 1) -> None:
-        """Initialize a Zone with name, coordinates, type, optional color,
-        and max drone capacity."""
+        """Initialize a Zone.
+
+        Args:
+            name: Unique zone identifier, no dashes or spaces allowed.
+            x: X coordinate of the zone.
+            y: Y coordinate of the zone.
+            zone_type: One of 'normal', 'blocked', 'restricted', 'priority'.
+            color: Optional display color name.
+            max_drones: Maximum number of drones allowed simultaneously.
+
+        Raises:
+            ZoneError: If any argument is invalid.
+        """
 
         if not name or '-' in name or ' ' in name:
             raise ZoneError(f"Invalid zone name: '{name}'")

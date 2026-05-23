@@ -7,7 +7,11 @@ from visual import print_turn, print_summary
 
 
 def main() -> None:
-    """Entry point: parse map, find paths, run simulation, print log."""
+    """Entry point: parse map, find paths, run simulation, print log.
+
+    Reads the map file from sys.argv[1], computes drone routes,
+    runs the simulation, and prints the turn-by-turn log.
+    """
     if len(sys.argv) < 2:
         print("Usage: 'python3 main.py <map_file>' or "
               "'make run FILE=<map_file>'")

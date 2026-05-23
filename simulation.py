@@ -12,8 +12,15 @@ class Simulation:
         nb_drones: int,
         end_zone: str
     ) -> None:
-        """Initialize the simulation with the graph, drone paths,
-        and end zone."""
+        """Initialize the simulation with the graph, drone paths, and end zone.
+
+        Args:
+            graph: The zone graph to simulate on.
+            paths: List of paths (each a list of zone names) to assign to
+            drones.
+            nb_drones: Total number of drones to simulate.
+            end_zone: Name of the destination zone.
+        """
         self.graph = graph
         self.end_zone = end_zone
 
@@ -37,11 +44,27 @@ class Simulation:
             self.connection_map[key] = conn
 
     def _conn_key(self, a: str, b: str) -> tuple[str, str]:
-        """Return a canonical (sorted) key for a connection."""
+        """Return a canonical sorted key for a connection.
+
+        Args:
+            a: First zone name.
+            b: Second zone name.
+
+        Returns:
+            A tuple (min, max) of the two zone names.
+        """
         return (min(a, b), max(a, b))
 
     def _conn_name(self, a: str, b: str) -> str:
-        """Return the human-readable connection name for output."""
+        """Return the human-readable connection label for output.
+
+        Args:
+            a: Source zone name.
+            b: Destination zone name.
+
+        Returns:
+            A string in the format 'a-b'.
+        """
         return f"{a}-{b}"
 
     def can_move(
@@ -52,7 +75,18 @@ class Simulation:
         entering: Dict[str, int],
         conn_used: Dict[tuple[str, str], int],
     ) -> bool:
-        """Check if a drone can move to next_zone this turn."""
+        """Check if a drone can move to next_zone this turn.
+
+        Args:
+            drone: The drone attempting to move.
+            next_zone: Name of the target zone.
+            leaving: Drones leaving each zone this turn.
+            entering: Drones entering each zone this turn.
+            conn_used: Connections already used this turn.
+
+        Returns:
+            True if the move is valid, False otherwise.
+        """
         if next_zone not in self.graph.zones:
             return False
 
@@ -82,7 +116,11 @@ class Simulation:
         return True
 
     def run(self) -> List[str]:
-        """Run the simulation and return the turn-by-turn log."""
+        """Run the simulation and return the turn-by-turn log.
+
+        Returns:
+            A list of strings, one per turn, describing all drone movements.
+        """
         while not all(d.finished for d in self.drones):
             leaving: Dict[str, int] = {}
             entering: Dict[str, int] = {}

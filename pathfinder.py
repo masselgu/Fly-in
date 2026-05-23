@@ -17,17 +17,35 @@ class Pathfinder:
     """Dijkstra-based pathfinding engine for drone routing."""
 
     def __init__(self, graph: Graph) -> None:
-        """Initialize the routing engine with a navigation graph."""
+        """Initialize the routing engine with a navigation graph.
+
+        Args:
+            graph: The zone graph to route drones through.
+        """
         self.graph = graph
 
     def _movement_cost(self, zone: Zone) -> float:
-        """Calculate traversal cost based on zone type."""
+        """Calculate traversal cost based on zone type.
+
+        Args:
+            zone: The destination zone.
+
+        Returns:
+            Movement cost as a float.
+        """
         if zone.zone_type == "restricted":
             return 2.0
         return 1.0
 
     def _initialize_costs(self, start: str) -> Dict[str, float]:
-        """Set up initial cost table with infinity for all zones."""
+        """Set up initial cost table with infinity for all zones.
+
+        Args:
+            start: Name of the starting zone.
+
+        Returns:
+            Dict mapping zone names to initial costs.
+        """
         costs: Dict[str, float] = {}
         for name in self.graph.zones:
             costs[name] = float("inf")
@@ -35,7 +53,11 @@ class Pathfinder:
         return costs
 
     def _initialize_previous(self) -> Dict[str, str | None]:
-        """Set up previous zone tracker for path reconstruction."""
+        """Set up previous zone tracker for path reconstruction.
+
+        Returns:
+            Dict mapping zone names to None.
+        """
         previous: Dict[str, str | None] = {}
         for name in self.graph.zones:
             previous[name] = None
@@ -43,7 +65,15 @@ class Pathfinder:
 
     def _rebuild_route(self, previous: Dict[str, str | None],
                        end: str) -> List[Zone]:
-        """Reconstruct full route from end zone back to start."""
+        """Reconstruct full route from end zone back to start.
+
+        Args:
+            previous: Dict mapping each zone to its predecessor.
+            end: Name of the destination zone.
+
+        Returns:
+            Ordered list of Zone objects from start to end.
+        """
         route: List[Zone] = []
         current: str | None = end
 
@@ -55,7 +85,18 @@ class Pathfinder:
         return route
 
     def compute_route(self, start: str, end: str) -> List[Zone]:
-        """Compute the single shortest path from start to end."""
+        """Compute the single shortest path from start to end.
+
+        Args:
+            start: Name of the departure zone.
+            end: Name of the destination zone.
+
+        Returns:
+            Ordered list of Zone objects representing the optimal path.
+
+        Raises:
+            ParserError: If a zone doesn't exist or no path is found.
+        """
         if start not in self.graph.zones:
             raise ParserError(
                 f"departure zone '{start}' does not exist in the map"
@@ -108,7 +149,18 @@ class Pathfinder:
         return self._rebuild_route(previous, end)
 
     def compute_k_routes(self, start: str, end: str) -> List[List[Zone]]:
-        """Compute k disjoint routes by blocking already-used connections."""
+        """Compute diverse routes by blocking already-used connections.
+
+        Args:
+            start: Name of the departure zone.
+            end: Name of the destination zone.
+
+        Returns:
+            List of distinct routes, each a list of Zone objects.
+
+        Raises:
+            ParserError: If no route exists between start and end.
+        """
         routes: List[List[Zone]] = []
         used_connections: set[tuple[str, str]] = set()
 

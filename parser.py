@@ -14,14 +14,33 @@ class Parser:
         self.graph: Graph = Graph()
 
     def _clean_line(self, line: str) -> str:
-        """Remove inline comments and strip whitespace."""
+        """Remove inline comments and strip whitespace.
+
+        Args:
+            line: Raw line from the map file.
+
+        Returns:
+            Cleaned line string.
+        """
         if "#" in line:
             line = line[:line.index("#")]
         return line.strip()
 
     def _parse_metadata(self, data: str, line_number: int,
                         is_connection: bool = False) -> dict:
-        """Parse metadata key=value pairs from bracket content."""
+        """Parse metadata key=value pairs from bracket content.
+
+        Args:
+            data: The bracket content string to parse.
+            line_number: Line number for error reporting.
+            is_connection: If True, parse connection metadata only.
+
+        Returns:
+            Dict with parsed metadata values.
+
+        Raises:
+            ParserError: If any metadata is invalid.
+        """
         result: dict = {
             "zone_type": "normal",
             "color": None,
@@ -114,7 +133,18 @@ class Parser:
 
     def _extract_bracket_data(self, line: str,
                               line_number: int) -> tuple[str, str]:
-        """Split line into main part and bracket content."""
+        """Split a line into main content and bracket metadata.
+
+        Args:
+            line: The full line to split.
+            line_number: Line number for error reporting.
+
+        Returns:
+            Tuple of (main content, bracket content).
+
+        Raises:
+            ParserError: If brackets are malformed.
+        """
         if "[" in line:
             if "]" not in line:
                 raise ParserError(
@@ -136,7 +166,15 @@ class Parser:
         return main, data
 
     def _handle_nb_drones(self, line: str, line_number: int) -> None:
-        """Parse nb_drones line."""
+        """Parse and store the nb_drones value.
+
+        Args:
+            line: The nb_drones line to parse.
+            line_number: Line number for error reporting.
+
+        Raises:
+            ParserError: If value is missing, invalid, or less than 1.
+        """
         parts = line.split(":")
         if len(parts) != 2:
             raise ParserError(
@@ -161,7 +199,15 @@ class Parser:
         self.nb_drones = value
 
     def _handle_hub(self, line: str, line_number: int) -> None:
-        """Parse hub, start_hub, end_hub lines."""
+        """Parse a hub, start_hub, or end_hub line and add it to the graph.
+
+        Args:
+            line: The hub line to parse.
+            line_number: Line number for error reporting.
+
+        Raises:
+            ParserError: If syntax or metadata is invalid.
+        """
         main, data = self._extract_bracket_data(line, line_number)
 
         colon_index = main.index(":")
@@ -219,7 +265,15 @@ class Parser:
         self.graph.add_zone(zone)
 
     def _handle_connection(self, line: str, line_number: int) -> None:
-        """Parse connection lines."""
+        """Parse a connection line and add it to the graph.
+
+        Args:
+            line: The connection line to parse.
+            line_number: Line number for error reporting.
+
+        Raises:
+            ParserError: If syntax or zones are invalid.
+        """
         main, data = self._extract_bracket_data(line, line_number)
 
         colon_index = main.index(":")
@@ -253,7 +307,14 @@ class Parser:
                                   metadata["max_link_capacity"])
 
     def parse(self, filename: str) -> None:
-        """Parse map file and build graph."""
+        """Parse map file and build the zone graph.
+
+        Args:
+            filename: Path to the map file.
+
+        Raises:
+            ParserError: If the file is missing, empty, or contains errors.
+        """
         try:
             with open(filename, "r") as f:
                 lines = f.readlines()
