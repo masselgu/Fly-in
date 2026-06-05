@@ -3,7 +3,7 @@ from errors import FlyInError
 from parser import Parser
 from simulation import Simulation
 from pathfinder import Pathfinder
-from visual import print_turn, print_summary
+from visual import Visualizer
 
 
 def main() -> None:
@@ -32,10 +32,11 @@ def main() -> None:
     sim = Simulation(graph, paths, nb_drones, end)
     logs = sim.run()
 
+    visualizer = Visualizer(graph)
     for line in logs:
-        print_turn(line, graph)
+        visualizer.print_turn(line)
 
-    print_summary(len(logs), nb_drones)
+    visualizer.print_summary(len(logs), nb_drones)
 
 
 if __name__ == "__main__":

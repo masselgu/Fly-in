@@ -1,10 +1,10 @@
-nb_drones: 2
+nb_drones: 1
 
 start_hub: start 0 0 [color=green]
-hub: A 1 0 [color=red]
-hub: B 2 0 [color=blue] 
+hub: A 1 0 [color=red max_drones=2]
+hub: B 2 0 [color=blue zone=restricted] 
 end_hub: goal 3 0 [color=rainbow]
 
-connection: start-A
+connection: start-A [max_link_capacity=2]
 connection: A-B
 connection: B-goal

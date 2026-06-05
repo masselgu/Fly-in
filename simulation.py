@@ -166,25 +166,32 @@ class Simulation:
                         leaving.get(drone.current_zone, 0) + 1
                     )
                     entering[next_zone] = entering.get(next_zone, 0) + 1
-                    edge = self._conn_key(drone.current_zone, next_zone)
-                    conn_used[edge] = conn_used.get(edge, 0) + 1
 
             for drone, next_zone in executed:
+                edge = self._conn_key(drone.current_zone, next_zone)
+                conn_used[edge] = conn_used.get(edge, 0) + 1
+
                 zone = self.graph.zones[next_zone]
                 old_zone = drone.current_zone
 
-                self.zone_usage[old_zone] -= 1
-                self.zone_usage[next_zone] += 1
-
                 if drone.in_transit:
+                    self.zone_usage[next_zone] += 1
+
                     drone.complete_transit()
                     turn_moves.append(f"D{drone.drone_id}-{next_zone}")
+
                 elif zone.zone_type == "restricted":
+                    self.zone_usage[old_zone] -= 1
+
                     conn_label = self._conn_name(old_zone, next_zone)
                     drone.start_transit(next_zone)
-                    self.zone_usage[next_zone] -= 1
+
                     turn_moves.append(f"D{drone.drone_id}-{conn_label}")
+
                 else:
+                    self.zone_usage[old_zone] -= 1
+                    self.zone_usage[next_zone] += 1
+
                     drone.move_forward()
                     turn_moves.append(f"D{drone.drone_id}-{next_zone}")
 
