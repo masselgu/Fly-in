@@ -23,6 +23,9 @@ class Simulation:
         """
         self.graph = graph
         self.end_zone = end_zone
+        self.bonus = []
+        self.copy_conn = []
+        self.i = 0
 
         self.drones: List[Drone] = []
         for i in range(1, nb_drones + 1):
@@ -160,16 +163,18 @@ class Simulation:
                         drone, next_zone, leaving, entering, conn_used
                     ):
                         executed.append((drone, next_zone))
+                        edge = self._conn_key(drone.current_zone, next_zone)
+                        conn_used[edge] = conn_used.get(edge, 0) + 1
+                        self.copy_conn.append(conn_used.get(edge, 0))
 
                 if (drone, next_zone) in executed:
                     leaving[drone.current_zone] = (
                         leaving.get(drone.current_zone, 0) + 1
                     )
                     entering[next_zone] = entering.get(next_zone, 0) + 1
-
+            result = ""
+            print(self.copy_conn)
             for drone, next_zone in executed:
-                edge = self._conn_key(drone.current_zone, next_zone)
-                conn_used[edge] = conn_used.get(edge, 0) + 1
 
                 zone = self.graph.zones[next_zone]
                 old_zone = drone.current_zone
@@ -194,8 +199,17 @@ class Simulation:
 
                     drone.move_forward()
                     turn_moves.append(f"D{drone.drone_id}-{next_zone}")
+                edge = self._conn_key(old_zone, next_zone)
+                zone = drone.current_zone
+                try:
+                    count = self.copy_conn[self.i]
+                except IndexError:
+                    count = self.copy_conn[-1]
+                result += (f"((Zone {zone}: {self.zone_usage[zone]}/{self.graph.zones[zone].max_drones}) "
+                           f"(Connection {edge[0]}-{edge[1]}: {count}/{self.connection_map[edge].max_link_capacity}))   ")
+                self.i += 1
 
             if turn_moves:
                 self.logs.append(" ".join(turn_moves))
-
+                self.bonus.append(result)
         return self.logs

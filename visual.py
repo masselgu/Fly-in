@@ -121,7 +121,7 @@ class Visualizer:
         yellow = self.get_ansi("yellow")
 
         print(
-            f"\n{green}✓ {yellow}{nb_drones}"
+            f"\n{yellow}{nb_drones}"
             f"{green} drone(s) delivered in "
             f"{yellow}{total_turns}"
             f"{green} turn(s).{self.RESET}"

@@ -51,7 +51,7 @@ class Parser:
         if not data.strip():
             return result
 
-        valid_zone_keys = ["zone", "color", "max_drones", "max_drone"]
+        valid_zone_keys = ["zone", "color", "max_drones"]
         valid_zone_types = ["normal", "blocked", "restricted", "priority"]
 
         for item in data.strip().split():
@@ -89,9 +89,6 @@ class Parser:
                         "max_link_capacity must be positive and non-zero! "
                     )
             else:
-                if key == "max_drone":
-                    key = "max_drones"
-
                 if key not in valid_zone_keys:
                     raise ParserError(
                         f"Line {line_number}: unknown metadata key '{key}' "

@@ -33,8 +33,9 @@ def main() -> None:
     logs = sim.run()
 
     visualizer = Visualizer(graph)
-    for line in logs:
+    for line, state in zip(logs, sim.bonus):
         visualizer.print_turn(line)
+        print(state)
 
     visualizer.print_summary(len(logs), nb_drones)
 
