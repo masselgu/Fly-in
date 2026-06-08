@@ -1,200 +1,189 @@
 import heapq
+from typing import List, Dict, Tuple, Set
 from errors import ParserError
 from graph import Graph
 from zone import Zone
-from typing import List, Dict
 
 
 ZONE_PRIORITY: Dict[str, int] = {
-    "priority":   0,
-    "normal":     1,
+    "priority": 0,
+    "normal": 1,
     "restricted": 2,
-    "blocked":    3,
+    "blocked": 3,
 }
 
 
 class Pathfinder:
-    """Dijkstra-based pathfinding engine for drone routing."""
+    """Dijkstra-based pathfinding engine with multi-route support."""
 
     def __init__(self, graph: Graph) -> None:
-        """Initialize the routing engine with a navigation graph.
+        """Initialize the pathfinder.
 
         Args:
-            graph: The zone graph to route drones through.
+            graph: Graph used for route computation.
         """
         self.graph = graph
 
-    def _movement_cost(self, zone: Zone) -> float:
-        """Calculate traversal cost based on zone type.
+        # Used for multi-path diversity (DO NOT mutate graph)
+        self.edge_penalty: Dict[Tuple[str, str], float] = {}
+
+    def _conn_key(self, a: str, b: str) -> tuple[str, str]:
+        """Return a canonical sorted key for a connection.
 
         Args:
-            zone: The destination zone.
+            a: First zone name.
+            b: Second zone name.
 
         Returns:
-            Movement cost as a float.
+            A tuple (min, max) of the two zone names.
+        """
+        return (min(a, b), max(a, b))
+
+    def _movement_cost(self, zone: Zone) -> float:
+        """Return the traversal cost of a zone.
+
+        Args:
+            zone: Destination zone.
+
+        Returns:
+            Cost associated with the zone.
         """
         if zone.zone_type == "restricted":
             return 2.0
         return 1.0
 
-    def _initialize_costs(self, start: str) -> Dict[str, float]:
-        """Set up initial cost table with infinity for all zones.
+    def _edge_cost(self, a: str, b: str, base: float) -> float:
+        """Return the cost of traversing a connection.
 
         Args:
-            start: Name of the starting zone.
+            a: Source zone name.
+            b: Destination zone name.
+            base: Base movement cost.
 
         Returns:
-            Dict mapping zone names to initial costs.
+            Total connection cost.
         """
-        costs: Dict[str, float] = {}
-        for name in self.graph.zones:
-            costs[name] = float("inf")
-        costs[start] = 0.0
-        return costs
-
-    def _initialize_previous(self) -> Dict[str, str | None]:
-        """Set up previous zone tracker for path reconstruction.
-
-        Returns:
-            Dict mapping zone names to None.
-        """
-        previous: Dict[str, str | None] = {}
-        for name in self.graph.zones:
-            previous[name] = None
-        return previous
-
-    def _rebuild_route(self, previous: Dict[str, str | None],
-                       end: str) -> List[Zone]:
-        """Reconstruct full route from end zone back to start.
-
-        Args:
-            previous: Dict mapping each zone to its predecessor.
-            end: Name of the destination zone.
-
-        Returns:
-            Ordered list of Zone objects from start to end.
-        """
-        route: List[Zone] = []
-        current: str | None = end
-
-        while current is not None:
-            route.append(self.graph.zones[current])
-            current = previous[current]
-
-        route.reverse()
-        return route
+        return base + self.edge_penalty.get(self._conn_key(a, b), 0.0)
 
     def compute_route(self, start: str, end: str) -> List[Zone]:
-        """Compute the single shortest path from start to end.
+        """Compute the shortest route between two zones.
 
         Args:
-            start: Name of the departure zone.
-            end: Name of the destination zone.
+            start: Departure zone name.
+            end: Destination zone name.
 
         Returns:
-            Ordered list of Zone objects representing the optimal path.
+            Ordered list of zones forming the route.
 
         Raises:
-            ParserError: If a zone doesn't exist or no path is found.
+            ParserError: If no valid route exists.
         """
+
         if start not in self.graph.zones:
-            raise ParserError(
-                f"departure zone '{start}' does not exist in the map"
-            )
+            raise ParserError(f"start zone '{start}' not found")
         if end not in self.graph.zones:
-            raise ParserError(
-                f"destination zone '{end}' does not exist in the map"
-            )
+            raise ParserError(f"end zone '{end}' not found")
 
-        costs = self._initialize_costs(start)
-        previous = self._initialize_previous()
-        visited: set[str] = set()
+        start_zone_type = self.graph.zones[start].zone_type
+        pq: List[tuple[float, int, str]] = [(0.0,
+                                            ZONE_PRIORITY[start_zone_type],
+                                            start)]
+        costs: Dict[str, float] = {z: float("inf") for z in self.graph.zones}
+        previous: Dict[str, str | None] = {z: None for z in self.graph.zones}
+        visited: Set[str] = set()
 
-        start_zone = self.graph.zones[start]
-        pq: List[tuple[float, int, str]] = []
-        heapq.heappush(pq, (0.0, ZONE_PRIORITY[start_zone.zone_type], start))
+        costs[start] = 0.0
 
         while pq:
-            current_cost, _, current = heapq.heappop(pq)
+            cost, _, current = heapq.heappop(pq)
 
             if current in visited:
                 continue
+            visited.add(current)
 
             if current == end:
                 break
-
-            visited.add(current)
 
             for neighbor in self.graph.get_neighbors(current):
                 if neighbor.zone_type == "blocked":
                     continue
 
-                new_cost = current_cost + self._movement_cost(neighbor)
+                base = self._movement_cost(neighbor)
+                new_cost = cost + self._edge_cost(current, neighbor.name, base)
 
                 if new_cost < costs[neighbor.name]:
                     costs[neighbor.name] = new_cost
                     previous[neighbor.name] = current
-                    heapq.heappush(
-                        pq,
-                        (new_cost, ZONE_PRIORITY[neighbor.zone_type],
-                         neighbor.name)
-                    )
+                    heapq.heappush(pq, (new_cost,
+                                        ZONE_PRIORITY[neighbor.zone_type],
+                                        neighbor.name))
 
         if costs[end] == float("inf"):
-            raise ParserError(
-                f"navigation failed — no flyable route exists "
-                f"between '{start}' and '{end}'"
-            )
+            raise ParserError(f"no route found between '{start}' and '{end}'")
 
         return self._rebuild_route(previous, end)
 
-    def compute_k_routes(self, start: str, end: str) -> List[List[Zone]]:
-        """Compute diverse routes by blocking already-used connections.
+    def _rebuild_route(
+        self,
+        previous: Dict[str, str | None],
+        end: str
+    ) -> List[Zone]:
+        """Rebuild a route from predecessor data.
 
         Args:
-            start: Name of the departure zone.
-            end: Name of the destination zone.
+            previous: Previous-zone mapping.
+            end: Destination zone name.
 
         Returns:
-            List of distinct routes, each a list of Zone objects.
+            Ordered list of zones in the route.
+        """
+        path: List[Zone] = []
+        current: str | None = end
+
+        while current is not None:
+            path.append(self.graph.zones[current])
+            current = previous[current]
+
+        path.reverse()
+        return path
+
+    def compute_k_routes(self, start: str, end: str) -> List[List[Zone]]:
+        """Compute multiple alternative routes.
+
+        Args:
+            start: Departure zone name.
+            end: Destination zone name.
+
+        Returns:
+            List of distinct routes.
 
         Raises:
-            ParserError: If no route exists between start and end.
+            ParserError: If no route exists.
         """
+
         routes: List[List[Zone]] = []
-        used_connections: set[tuple[str, str]] = set()
 
-        while True:
-            original_connections = self.graph.connections[:]
-            self.graph.connections = [
-                c for c in self.graph.connections
-                if (min(c.zone1.name, c.zone2.name),
-                    max(c.zone1.name, c.zone2.name)) not in used_connections
-            ]
-
+        for _ in range(10):  # safety limit
             try:
                 route = self.compute_route(start, end)
-            except Exception:
+            except ParserError:
                 break
-            finally:
-                self.graph.connections = original_connections
 
             route_names = [z.name for z in route]
-            if route_names not in [[z.name for z in r] for r in routes]:
-                for i in range(len(route) - 1):
-                    if route[i].name == start or \
-                     route[i + 1].name == end:
-                        continue
-                    a = min(route[i].name, route[i + 1].name)
-                    b = max(route[i].name, route[i + 1].name)
-                    used_connections.add((a, b))
-                routes.append(route)
-            else:
+
+            if route_names in [[z.name for z in r] for r in routes]:
                 break
 
+            routes.append(route)
+
+            # Increase penalty on used edges
+            for i in range(len(route) - 1):
+                a = route[i].name
+                b = route[i + 1].name
+                key = self._conn_key(a, b)
+                self.edge_penalty[key] = self.edge_penalty.get(key, 0.0) + 1.0
+
         if not routes:
-            raise ParserError(
-                f"no route found between '{start}' and '{end}'"
-            )
+            raise ParserError(f"no route found between '{start}' and '{end}'")
 
         return routes
