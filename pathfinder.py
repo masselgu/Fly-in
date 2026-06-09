@@ -23,8 +23,6 @@ class Pathfinder:
             graph: Graph used for route computation.
         """
         self.graph = graph
-
-        # Used for multi-path diversity (DO NOT mutate graph)
         self.edge_penalty: Dict[Tuple[str, str], float] = {}
 
     def _conn_key(self, a: str, b: str) -> tuple[str, str]:
@@ -91,7 +89,6 @@ class Pathfinder:
         costs: Dict[str, float] = {z: float("inf") for z in self.graph.zones}
         previous: Dict[str, str | None] = {z: None for z in self.graph.zones}
         visited: Set[str] = set()
-
         costs[start] = 0.0
 
         while pq:
@@ -163,7 +160,7 @@ class Pathfinder:
 
         routes: List[List[Zone]] = []
 
-        for _ in range(10):  # safety limit
+        for _ in range(10):
             try:
                 route = self.compute_route(start, end)
             except ParserError:
@@ -176,12 +173,11 @@ class Pathfinder:
 
             routes.append(route)
 
-            # Increase penalty on used edges
             for i in range(len(route) - 1):
                 a = route[i].name
                 b = route[i + 1].name
                 key = self._conn_key(a, b)
-                self.edge_penalty[key] = self.edge_penalty.get(key, 0.0) + 1.0
+                self.edge_penalty[key] = self.edge_penalty.get(key, 0.0) + 3.0
 
         if not routes:
             raise ParserError(f"no route found between '{start}' and '{end}'")
