@@ -3,7 +3,7 @@ from graph import Graph
 
 
 class Visualizer:
-    """Handles colored terminal output for the simulation."""
+    """Handle colored terminal output for the simulation."""
 
     RESET = "\033[0m"
 
@@ -18,10 +18,25 @@ class Visualizer:
     ]
 
     def __init__(self, graph: Graph) -> None:
+        """Initialize the visualizer.
+
+        Args:
+            graph: Graph object used to find zone colors.
+
+        Returns:
+            None.
+        """
         self.graph = graph
 
     def get_ansi(self, color_name: str) -> str:
-        """Convert a color name to ANSI escape code."""
+        """Convert a color name to an ANSI escape code.
+
+        Args:
+            color_name: String color name accepted by matplotlib.
+
+        Returns:
+            ANSI escape code string for the color, or white if invalid.
+        """
         try:
             r, g, b = (int(c * 255) for c in mcolors.to_rgb(color_name))
             return f"\033[38;2;{r};{g};{b}m"
@@ -29,7 +44,15 @@ class Visualizer:
             return "\033[97m"
 
     def apply_color(self, text: str, color_name: str) -> str:
-        """Apply color formatting to text."""
+        """Apply color formatting to text.
+
+        Args:
+            text: String text to color.
+            color_name: String color name or rainbow.
+
+        Returns:
+            String wrapped with ANSI color escape codes.
+        """
         if color_name.lower() == "rainbow":
             result = ""
 
@@ -54,7 +77,14 @@ class Visualizer:
         )
 
     def zone_color_name(self, zone_name: str) -> str:
-        """Return a zone's color."""
+        """Return a zone's color name.
+
+        Args:
+            zone_name: String name of the zone to inspect.
+
+        Returns:
+            String color name, or an empty string when no color is set.
+        """
         zone = self.graph.zones.get(zone_name)
 
         if zone and zone.color:
@@ -63,7 +93,14 @@ class Visualizer:
         return ""
 
     def print_turn(self, moves: str) -> None:
-        """Print a simulation turn."""
+        """Print one simulation turn.
+
+        Args:
+            moves: String containing all move tokens for one turn.
+
+        Returns:
+            None.
+        """
         for token in moves.split():
             dash = token.index("-")
             drone_id = token[:dash]
@@ -116,7 +153,15 @@ class Visualizer:
         total_turns: int,
         nb_drones: int
     ) -> None:
-        """Print final simulation summary."""
+        """Print the final simulation summary.
+
+        Args:
+            total_turns: Integer number of turns used by the simulation.
+            nb_drones: Integer number of delivered drones.
+
+        Returns:
+            None.
+        """
         green = self.get_ansi("green")
         yellow = self.get_ansi("yellow")
 

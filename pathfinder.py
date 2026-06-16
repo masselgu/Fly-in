@@ -14,13 +14,16 @@ ZONE_PRIORITY: Dict[str, int] = {
 
 
 class Pathfinder:
-    """Dijkstra-based pathfinding engine with multi-route support."""
+    """Compute drone routes with Dijkstra-based pathfinding."""
 
     def __init__(self, graph: Graph) -> None:
         """Initialize the pathfinder.
 
         Args:
-            graph: Graph used for route computation.
+            graph: Graph object used for route computation.
+
+        Returns:
+            None.
         """
         self.graph = graph
         self.edge_penalty: Dict[Tuple[str, str], float] = {}
@@ -29,11 +32,11 @@ class Pathfinder:
         """Return a canonical sorted key for a connection.
 
         Args:
-            a: First zone name.
-            b: Second zone name.
+            a: First zone name as a string.
+            b: Second zone name as a string.
 
         Returns:
-            A tuple (min, max) of the two zone names.
+            Tuple of the two zone names sorted alphabetically.
         """
         return (min(a, b), max(a, b))
 
@@ -41,10 +44,10 @@ class Pathfinder:
         """Return the traversal cost of a zone.
 
         Args:
-            zone: Destination zone.
+            zone: Destination Zone object.
 
         Returns:
-            Cost associated with the zone.
+            Float movement cost associated with the zone.
         """
         if zone.zone_type == "restricted":
             return 2.0
@@ -54,12 +57,12 @@ class Pathfinder:
         """Return the cost of traversing a connection.
 
         Args:
-            a: Source zone name.
-            b: Destination zone name.
-            base: Base movement cost.
+            a: Source zone name as a string.
+            b: Destination zone name as a string.
+            base: Float base movement cost.
 
         Returns:
-            Total connection cost.
+            Float total connection cost including penalties.
         """
         return base + self.edge_penalty.get(self._conn_key(a, b), 0.0)
 
@@ -67,14 +70,14 @@ class Pathfinder:
         """Compute the shortest route between two zones.
 
         Args:
-            start: Departure zone name.
-            end: Destination zone name.
+            start: Departure zone name as a string.
+            end: Destination zone name as a string.
 
         Returns:
-            Ordered list of zones forming the route.
+            Ordered list of Zone objects forming the route.
 
         Raises:
-            ParserError: If no valid route exists.
+            ParserError: If a zone is missing or no valid route exists.
         """
 
         if start not in self.graph.zones:
@@ -128,11 +131,11 @@ class Pathfinder:
         """Rebuild a route from predecessor data.
 
         Args:
-            previous: Previous-zone mapping.
-            end: Destination zone name.
+            previous: Dictionary mapping each zone name to its predecessor.
+            end: Destination zone name as a string.
 
         Returns:
-            Ordered list of zones in the route.
+            Ordered list of Zone objects in the route.
         """
         path: List[Zone] = []
         current: str | None = end
@@ -148,11 +151,11 @@ class Pathfinder:
         """Compute multiple alternative routes.
 
         Args:
-            start: Departure zone name.
-            end: Destination zone name.
+            start: Departure zone name as a string.
+            end: Destination zone name as a string.
 
         Returns:
-            List of distinct routes.
+            List of distinct routes, each as a list of Zone objects.
 
         Raises:
             ParserError: If no route exists.

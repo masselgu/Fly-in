@@ -2,21 +2,24 @@ from errors import ZoneError
 
 
 class Zone:
-    """Represents a zone in the graph with coordinates, type, color,
-    and drone capacity."""
+    """Represent a zone in the graph."""
+
     def __init__(self, name: str, x: int, y: int,
                  zone_type: str = "normal",
                  color: str | None = None,
                  max_drones: int = 1) -> None:
-        """Initialize a Zone.
+        """Initialize a zone.
 
         Args:
-            name: Unique zone identifier, no dashes or spaces allowed.
-            x: X coordinate of the zone.
-            y: Y coordinate of the zone.
-            zone_type: One of 'normal', 'blocked', 'restricted', 'priority'.
-            color: Optional display color name.
-            max_drones: Maximum number of drones allowed simultaneously.
+            name: String zone identifier, without dashes or spaces.
+            x: Integer x coordinate of the zone.
+            y: Integer y coordinate of the zone.
+            zone_type: String zone type, such as normal or restricted.
+            color: Optional string display color name.
+            max_drones: Integer maximum number of drones allowed at once.
+
+        Returns:
+            None.
 
         Raises:
             ZoneError: If any argument is invalid.

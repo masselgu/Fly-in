@@ -5,6 +5,7 @@ from typing import List, Dict
 
 class Simulation:
     """Run the drone routing simulation turn by turn."""
+
     def __init__(
         self,
         graph: Graph,
@@ -12,20 +13,19 @@ class Simulation:
         nb_drones: int,
         end_zone: str
     ) -> None:
-        """Initialize the simulation with the graph, drone paths, and end zone.
+        """Initialize the simulation.
 
         Args:
-            graph: The zone graph to simulate on.
-            paths: List of paths (each a list of zone names) to assign to
-            drones.
-            nb_drones: Total number of drones to simulate.
-            end_zone: Name of the destination zone.
+            graph: Graph object to simulate on.
+            paths: List of routes, where each route is a list of zone names.
+            nb_drones: Integer total number of drones to simulate.
+            end_zone: Destination zone name as a string.
+
+        Returns:
+            None.
         """
         self.graph = graph
         self.end_zone = end_zone
-        self.copy_conn = []
-        self.i = 0
-        self.bonus = []
 
         self.drones: List[Drone] = []
         for i in range(1, nb_drones + 1):
@@ -50,11 +50,11 @@ class Simulation:
         """Return a canonical sorted key for a connection.
 
         Args:
-            a: First zone name.
-            b: Second zone name.
+            a: First zone name as a string.
+            b: Second zone name as a string.
 
         Returns:
-            A tuple (min, max) of the two zone names.
+            Tuple of the two zone names sorted alphabetically.
         """
         return (min(a, b), max(a, b))
 
@@ -62,11 +62,11 @@ class Simulation:
         """Return the human-readable connection label for output.
 
         Args:
-            a: Source zone name.
-            b: Destination zone name.
+            a: Source zone name as a string.
+            b: Destination zone name as a string.
 
         Returns:
-            A string in the format 'a-b'.
+            String connection name in the format "a-b".
         """
         return f"{a}-{b}"
 
@@ -78,17 +78,17 @@ class Simulation:
         entering: Dict[str, int],
         conn_used: Dict[tuple[str, str], int],
     ) -> bool:
-        """Check if a drone can move to next_zone this turn.
+        """Check whether a drone can move this turn.
 
         Args:
-            drone: The drone attempting to move.
-            next_zone: Name of the target zone.
-            leaving: Drones leaving each zone this turn.
-            entering: Drones entering each zone this turn.
-            conn_used: Connections already used this turn.
+            drone: Drone object attempting to move.
+            next_zone: Target zone name as a string.
+            leaving: Dictionary of drones leaving each zone this turn.
+            entering: Dictionary of drones entering each zone this turn.
+            conn_used: Dictionary of connection usage counts this turn.
 
         Returns:
-            True if the move is valid, False otherwise.
+            Boolean indicating whether the move is valid.
         """
         if next_zone not in self.graph.zones:
             return False
@@ -122,7 +122,7 @@ class Simulation:
         """Run the simulation and return the turn-by-turn log.
 
         Returns:
-            A list of strings, one per turn, describing all drone movements.
+            List of strings, one per turn, describing drone movements.
         """
         while not all(d.finished for d in self.drones):
             leaving: Dict[str, int] = {}
@@ -152,7 +152,6 @@ class Simulation:
                     executed.append((drone, next_zone))
                     edge = self._conn_key(drone.current_zone, next_zone)
                     conn_used[edge] = conn_used.get(edge, 0) + 1
-                    self.copy_conn.append(conn_used[edge])
                 else:
                     if self.can_move(
                         drone, next_zone, leaving, entering, conn_used
@@ -160,7 +159,6 @@ class Simulation:
                         executed.append((drone, next_zone))
                         edge = self._conn_key(drone.current_zone, next_zone)
                         conn_used[edge] = conn_used.get(edge, 0) + 1
-                        self.copy_conn.append(conn_used[edge])
 
                 if (drone, next_zone) in executed:
                     leaving[drone.current_zone] = (
@@ -168,7 +166,6 @@ class Simulation:
                     )
                     entering[next_zone] = entering.get(next_zone, 0) + 1
 
-            reslut = ""
             for drone, next_zone in executed:
                 zone = self.graph.zones[next_zone]
                 old_zone = drone.current_zone
@@ -189,13 +186,7 @@ class Simulation:
                     self.zone_usage[next_zone] += 1
                     drone.move_forward()
                     turn_moves.append(f"D{drone.drone_id}-{next_zone}")
-                edge = self._conn_key(old_zone, next_zone)
-                zone = drone.current_zone
-                count = self.copy_conn[self.i]
-                reslut += (f"Zone {zone}: {self.zone_usage[zone]}/{self.graph.zones[zone].max_drones}   Connection {edge[0]}-{edge[1]}: {count}/{self.connection_map[edge].max_link_capacity}         ")
-                self.i += 1
 
             if turn_moves:
                 self.logs.append(" ".join(turn_moves))
-                self.bonus.append(reslut)
         return self.logs

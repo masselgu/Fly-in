@@ -3,16 +3,19 @@ from zone import Zone
 
 
 class Connection:
-    """Represents a bidirectional connection between two zones with a
-    maximum capacity."""
+    """Represent a bidirectional connection between two zones."""
+
     def __init__(self, zone1: Zone, zone2: Zone,
                  max_link_capacity: int = 1) -> None:
-        """Initialize a connection between two zones.
+        """Initialize a connection.
 
         Args:
-            zone1: First zone of the connection.
-            zone2: Second zone of the connection.
-            max_link_capacity: Max drones traversing simultaneously.
+            zone1: First Zone object connected by the edge.
+            zone2: Second Zone object connected by the edge.
+            max_link_capacity: Integer maximum simultaneous drone crossings.
+
+        Returns:
+            None.
 
         Raises:
             GraphError: If max_link_capacity is not a positive integer.
@@ -25,9 +28,14 @@ class Connection:
 
 
 class Graph:
-    """Represents the entire zone graph, including zones and connections."""
+    """Represent the zone graph and its connections."""
+
     def __init__(self) -> None:
-        """Initialize the graph with empty zone and connection lists."""
+        """Initialize an empty graph.
+
+        Returns:
+            None.
+        """
         self.zones: dict[str, Zone] = {}
         self.connections: list[Connection] = []
 
@@ -35,7 +43,10 @@ class Graph:
         """Add a zone to the graph.
 
         Args:
-            zone: The Zone object to add.
+            zone: Zone object to store by name.
+
+        Returns:
+            None.
 
         Raises:
             GraphError: If a zone with the same name already exists.
@@ -49,12 +60,15 @@ class Graph:
         """Add a bidirectional connection between two zones.
 
         Args:
-            name1: Name of the first zone.
-            name2: Name of the second zone.
-            max_link_capacity: Max drones allowed simultaneously.
+            name1: String name of the first zone.
+            name2: String name of the second zone.
+            max_link_capacity: Integer maximum simultaneous drone crossings.
+
+        Returns:
+            None.
 
         Raises:
-            GraphError: If either zone is missing or connection exists.
+            GraphError: If a zone is missing or the connection already exists.
         """
         if name1 not in self.zones:
             raise GraphError(f"Zone '{name1}' not found!")
@@ -76,7 +90,7 @@ class Graph:
         """Return all zones directly connected to the given zone.
 
         Args:
-            name: Name of the zone to look up.
+            name: String name of the zone to inspect.
 
         Returns:
             List of neighboring Zone objects.

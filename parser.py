@@ -1,13 +1,18 @@
+import matplotlib.colors as mcolors
 from errors import ParserError
 from zone import Zone
 from graph import Graph
-import matplotlib.colors as mcolors
 
 
 class Parser:
-    """Parser for reading map files and building the graph structure."""
+    """Parse map files into a graph structure."""
+
     def __init__(self) -> None:
-        """Initialize parser state: drone count, start/end zones, and graph."""
+        """Initialize empty parser state.
+
+        Returns:
+            None.
+        """
         self.nb_drones: int = 0
         self.start_zone: Zone | None = None
         self.end_zone: Zone | None = None
@@ -17,10 +22,10 @@ class Parser:
         """Remove inline comments and strip whitespace.
 
         Args:
-            line: Raw line from the map file.
+            line: Raw map file line as a string.
 
         Returns:
-            Cleaned line string.
+            Cleaned string without comments or surrounding whitespace.
         """
         if "#" in line:
             line = line[:line.index("#")]
@@ -28,15 +33,15 @@ class Parser:
 
     def _parse_metadata(self, data: str, line_number: int,
                         is_connection: bool = False) -> dict:
-        """Parse metadata key=value pairs from bracket content.
+        """Parse metadata key-value pairs.
 
         Args:
-            data: The bracket content string to parse.
-            line_number: Line number for error reporting.
-            is_connection: If True, parse connection metadata only.
+            data: Bracket content string to parse.
+            line_number: Integer source line number for error messages.
+            is_connection: Boolean selecting connection metadata rules.
 
         Returns:
-            Dict with parsed metadata values.
+            Dictionary containing parsed metadata values.
 
         Raises:
             ParserError: If any metadata is invalid.
@@ -133,11 +138,11 @@ class Parser:
         """Split a line into main content and bracket metadata.
 
         Args:
-            line: The full line to split.
-            line_number: Line number for error reporting.
+            line: Full cleaned map line as a string.
+            line_number: Integer source line number for error messages.
 
         Returns:
-            Tuple of (main content, bracket content).
+            Tuple containing main content and bracket content strings.
 
         Raises:
             ParserError: If brackets are malformed.
@@ -166,8 +171,11 @@ class Parser:
         """Parse and store the nb_drones value.
 
         Args:
-            line: The nb_drones line to parse.
-            line_number: Line number for error reporting.
+            line: nb_drones line as a string.
+            line_number: Integer source line number for error messages.
+
+        Returns:
+            None.
 
         Raises:
             ParserError: If value is missing, invalid, or less than 1.
@@ -196,11 +204,14 @@ class Parser:
         self.nb_drones = value
 
     def _handle_hub(self, line: str, line_number: int) -> None:
-        """Parse a hub, start_hub, or end_hub line and add it to the graph.
+        """Parse a hub line and add it to the graph.
 
         Args:
-            line: The hub line to parse.
-            line_number: Line number for error reporting.
+            line: Hub, start_hub, or end_hub line as a string.
+            line_number: Integer source line number for error messages.
+
+        Returns:
+            None.
 
         Raises:
             ParserError: If syntax or metadata is invalid.
@@ -222,6 +233,10 @@ class Parser:
         if not name or "-" in name or " " in name:
             raise ParserError(
                 f"Line {line_number}: invalid zone name '{name}'"
+            )
+        if name in self.graph.zones:
+            raise ParserError(
+                f"Line {line_number}: zone '{name}' already exists!"
             )
 
         x_str = parts[1]
@@ -265,8 +280,11 @@ class Parser:
         """Parse a connection line and add it to the graph.
 
         Args:
-            line: The connection line to parse.
-            line_number: Line number for error reporting.
+            line: Connection line as a string.
+            line_number: Integer source line number for error messages.
+
+        Returns:
+            None.
 
         Raises:
             ParserError: If syntax or zones are invalid.
@@ -298,16 +316,36 @@ class Parser:
                 "connection cannot link zone to itself!"
             )
 
+        if zone1 not in self.graph.zones:
+            raise ParserError(
+                f"Line {line_number}: zone '{zone1}' not found!"
+            )
+        if zone2 not in self.graph.zones:
+            raise ParserError(
+                f"Line {line_number}: zone '{zone2}' not found!"
+            )
+
+        for conn in self.graph.connections:
+            if (conn.zone1.name == zone1 and conn.zone2.name == zone2) or \
+               (conn.zone1.name == zone2 and conn.zone2.name == zone1):
+                raise ParserError(
+                    f"Line {line_number}: "
+                    f"connection '{zone1}-{zone2}' already exists!"
+                )
+
         metadata = self._parse_metadata(data, line_number,
                                         is_connection=True)
         self.graph.add_connection(zone1, zone2,
                                   metadata["max_link_capacity"])
 
     def parse(self, filename: str) -> None:
-        """Parse map file and build the zone graph.
+        """Parse a map file and build the zone graph.
 
         Args:
-            filename: Path to the map file.
+            filename: String path to the map file.
+
+        Returns:
+            None.
 
         Raises:
             ParserError: If the file is missing, empty, or contains errors.

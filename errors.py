@@ -1,18 +1,18 @@
 class FlyInError(Exception):
-    """Base error for all project errors"""
+    """Define the base error for project exceptions."""
     pass
 
 
 class ZoneError(FlyInError):
-    """Error related to zone data"""
+    """Define an error raised for invalid zone data."""
     pass
 
 
 class GraphError(FlyInError):
-    """Error related to graph structure"""
+    """Define an error raised for invalid graph structure."""
     pass
 
 
 class ParserError(FlyInError):
-    """Error related to file parsing"""
+    """Define an error raised for invalid map parsing."""
     pass
